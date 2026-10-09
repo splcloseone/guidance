@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#112526" />
+    <meta name="prototype-version" content="0.2.0" />
+    <link rel="icon" type="image/svg+xml" href="/sigil.svg" />
+    <meta name="description" content="Enter the Stillwater Sanctum. Shape a manifestation of the Source, then put it to the test in a third-person proving ground." />
+    <title>The Source — Meditation Prototype</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body class="meditating">
+    <canvas id="game-canvas" aria-label="Third-person 3D proving ground"></canvas>
+    <div class="world-vignette" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="The Source creation prototype">
+        <span class="brand-sigil" aria-hidden="true"><span></span></span>
+        <span class="brand-wordmark">THE SOURCE<span class="brand-subtitle">CREATION PROTOTYPE <i>02</i></span></span>
+      </a>
+      <div class="location"><span class="location-mark" aria-hidden="true">✧</span><span>THE STILLWATER SANCTUM</span><span class="location-line"></span></div>
+      <nav class="header-actions" aria-label="Prototype controls">
+        <button id="guide-toggle" class="quiet-button" type="button"><span class="button-icon" aria-hidden="true">?</span> Guide</button>
+        <button id="meditate-toggle" class="meditate-button" type="button"><span aria-hidden="true">◈</span> Meditate <kbd>M</kbd></button>
+      </nav>
+    </header>
+
+    <main aria-label="The Source prototype">
+      <section class="vitals" aria-label="Character status">
+        <div class="vitals-heading"><span class="tiny-diamond" aria-hidden="true"></span><span>YOUR RESERVE</span><span id="mode-label" class="mode-label">MEDITATING</span></div>
+        <div class="reserve-label"><span>The Source</span><span id="source-value">100 <small>/ 100</small></span></div>
+        <div class="meter source-meter"><div id="source-fill" class="meter-fill" style="width:100%"></div><span class="meter-ticks" aria-hidden="true"></span></div>
+        <div class="secondary-vitals">
+          <div class="secondary-vital"><span>STAMINA</span><div class="meter"><div id="stamina-fill" class="meter-fill" style="width:100%"></div></div></div>
+          <div class="secondary-vital"><span>HEALTH</span><div class="meter"><div id="health-fill" class="meter-fill" style="width:100%"></div></div></div>
+        </div>
+      </section>
+
+      <aside class="map-widget" aria-label="Minimap">
+        <div class="map-frame"><span class="map-north">N</span><canvas id="minimap" width="160" height="160" role="button" tabindex="0" aria-label="Expand map showing player position and nearby terrain"></canvas><span class="map-corner corner-tl"></span><span class="map-corner corner-tr"></span><span class="map-corner corner-bl"></span><span class="map-corner corner-br"></span></div>
+        <div class="map-caption"><span class="day-icon" aria-hidden="true">☼</span> DAY 01 <span class="map-dot">·</span> 08:00</div>
+      </aside>
+
+      <aside id="workshop" class="workshop" aria-labelledby="workshop-title">
+        <div class="workshop-header"><div class="eyebrow"><span class="tiny-diamond" aria-hidden="true"></span> MEDITATION <span class="eyebrow-divider">/</span> CREATION WORKSHOP</div><h1 id="workshop-title">Nothing into something<span>.</span></h1><p>Begin with a ball of the Source.<br>Shape it. Save it. Discover its possibilities.</p></div>
+        <div class="workshop-body">
+          <div class="creation-preview-wrap"><div class="preview-grid" aria-hidden="true"></div><canvas id="creation-preview" width="620" height="270" aria-label="Preview of your manifested tethered hook"></canvas><span class="preview-label">MANIFESTATION STUDY</span><span class="preview-index">01 / ∞</span></div>
+          <div class="section-divider"><span>FORM &amp; FUNCTION</span><span class="section-divider-line"></span><span aria-hidden="true">✧</span></div>
+          <label class="field-label" for="creation-name">CREATION NAME</label>
+          <input id="creation-name" class="name-input" type="text" maxlength="32" value="Tethered Hook" autocomplete="off" spellcheck="false" />
+          <div class="color-row"><label class="field-label" for="creation-color">AURA COLOR</label><div class="swatches" aria-label="Aura color presets"><button class="color-swatch" type="button" data-color="#ccefff" style="--swatch:#ccefff" aria-label="Ice aura" title="Ice"></button><button class="color-swatch" type="button" data-color="#dfbd78" style="--swatch:#dfbd78" aria-label="Amber aura" title="Amber"></button><button class="color-swatch" type="button" data-color="#e69a9a" style="--swatch:#e69a9a" aria-label="Rose aura" title="Rose"></button><button class="color-swatch" aria-pressed="true" type="button" data-color="#8fdcc8" style="--swatch:#8fdcc8" aria-label="Jade aura" title="Jade"></button><span class="swatch-separator"></span><label class="custom-color-wrap" title="Choose any aura color"><input id="creation-color" type="color" value="#8fdcc8" aria-label="Custom aura color" /><span aria-hidden="true">+</span></label></div></div>
+          <section class="creation-tools" aria-label="Shape your creation">
+            <div class="tool-heading"><span class="field-label">CHOOSE A STARTING FORM</span><span class="tool-caption">Fully editable</span></div>
+            <div id="creation-presets" class="creation-presets" aria-label="Creation presets"></div>
+            <button id="stretch-creation" class="workshop-small-button stretch-button" type="button">Stretch the ball into a hook <span aria-hidden="true">↗</span></button>
+
+            <button id="description-toggle" class="workshop-disclosure" type="button" aria-expanded="false" aria-controls="description-panel"><span><span aria-hidden="true">✧</span> Describe your idea</span><span aria-hidden="true">+</span></button>
+            <div id="description-panel" class="workshop-tool-panel" hidden>
+              <label class="field-label" for="creation-description">WHAT DO YOU IMAGINE?</label>
+              <textarea id="creation-description" class="workshop-textarea" rows="3" maxlength="240" placeholder="A long teal lasso with a strong tether" aria-describedby="description-help"></textarea>
+              <p id="description-help" class="tool-help">Try a hook, lasso, claw, or ball with a color, reach, or strength. This assistant matches supported words; creatures come later.</p>
+              <button id="describe-creation" class="workshop-small-button" type="button">Shape this idea <span aria-hidden="true">↗</span></button>
+              <p id="description-status" class="tool-feedback" role="status"></p>
+            </div>
+
+            <button id="shape-toggle" class="workshop-disclosure" type="button" aria-expanded="false" aria-controls="shape-panel"><span><span aria-hidden="true">◇</span> Shape by hand</span><span aria-hidden="true">+</span></button>
+            <div id="shape-panel" class="workshop-tool-panel" hidden>
+              <label class="workshop-check"><input id="shaping-assistance" type="checkbox" checked /><span>Shaping assistance <small>Smooth curves and snap while dragging</small></span></label>
+              <div class="shape-canvas-wrap"><canvas id="shape-canvas" width="560" height="420" aria-label="Front view of your shape. Drag its numbered points, or use the point controls below."></canvas><span class="shape-view-label">FRONT VIEW · X / Y</span></div>
+              <p id="shape-help" class="tool-help">Drag a point to reshape it. Use Depth to bend it toward or away from you. The preview above shows the full form.</p>
+              <label class="field-label" for="shape-point">SELECTED POINT</label>
+              <select id="shape-point" class="workshop-select" aria-describedby="shape-help"></select>
+              <div class="shape-axis"><label for="shape-x">Across</label><input id="shape-x" type="range" min="-1.5" max="1.5" step="0.01" value="0" /><output id="shape-x-value" for="shape-x">0.00</output></div>
+              <div class="shape-axis"><label for="shape-y">Height</label><input id="shape-y" type="range" min="-1.5" max="1.5" step="0.01" value="0" /><output id="shape-y-value" for="shape-y">0.00</output></div>
+              <div class="shape-axis"><label for="shape-z">Depth</label><input id="shape-z" type="range" min="-1.5" max="1.5" step="0.01" value="0" /><output id="shape-z-value" for="shape-z">0.00</output></div>
+              <div class="tool-button-row"><button id="shape-add-point" class="workshop-small-button" type="button">Add point</button><button id="shape-remove-point" class="workshop-small-button" type="button">Remove point</button></div>
+              <div class="slider-field shape-thickness-field"><div class="slider-label"><label for="shape-thickness">Thickness</label><output id="shape-thickness-value" for="shape-thickness">0.055</output></div><input id="shape-thickness" type="range" min="0.025" max="0.16" step="0.005" value="0.055" /></div>
+              <p id="shape-status" class="tool-feedback" role="status"></p>
+            </div>
+
+            <button id="library-toggle" class="workshop-disclosure" type="button" aria-expanded="false" aria-controls="library-panel"><span><span aria-hidden="true">▱</span> Your saved designs</span><span id="library-count" class="tool-caption">0 / 20</span></button>
+            <div id="library-panel" class="workshop-tool-panel" hidden>
+              <label class="field-label" for="creation-library">DESIGN LIBRARY</label>
+              <select id="creation-library" class="workshop-select"></select>
+              <div class="tool-button-row"><button id="library-load" class="workshop-small-button" type="button">Load design</button><button id="library-new" class="workshop-small-button" type="button">New ball</button></div>
+              <p id="library-status" class="tool-help" role="status">Save creation to keep a design here. Your working design also autosaves.</p>
+            </div>
+          </section>
+          <div class="section-divider"><span>TETHER &amp; RESERVE</span><span class="section-divider-line"></span><span aria-hidden="true">✧</span></div>
+          <div class="slider-field"><div class="slider-label"><label for="hook-size">Creation scale</label><output id="hook-size-value" for="hook-size">1.0×</output></div><input id="hook-size" type="range" min="0.6" max="1.6" step="0.1" value="1" /><div class="slider-description">Shape the size of your manifestation</div></div>
+          <div class="slider-field"><div class="slider-label"><label for="reach">Reach</label><output id="reach-value" for="reach">28 m</output></div><input id="reach" type="range" min="12" max="40" step="1" value="28" /><div class="slider-description">How far your hook can travel</div></div>
+          <div class="slider-field"><div class="slider-label"><label for="reel-speed">Reel speed</label><output id="reel-speed-value" for="reel-speed">7 m/s</output></div><input id="reel-speed" type="range" min="3" max="12" step="1" value="7" /><div class="slider-description">Pull yourself closer, or bring an object to you</div></div>
+          <div class="slider-field"><div class="slider-label"><label for="strength">Strength</label><output id="strength-value" for="strength">3 / 5</output></div><input id="strength" type="range" min="1" max="5" step="1" value="3" /><div class="slider-description">The weight your creation can withstand</div></div>
+          <div class="cost-card"><span class="cost-sigil" aria-hidden="true">◈</span><div><span class="cost-label">ACTIVATION</span><span id="activation-cost" class="cost-value">12 <small>reserve</small></span></div><span class="cost-divider"></span><div><span class="cost-label">UPKEEP</span><span id="upkeep-cost" class="cost-value">0.8 <small>/ second</small></span></div></div>
+          <p class="manifestation-note"><span aria-hidden="true">⌁</span> Saved designs remain. Manifestations are temporary.</p>
+        </div>
+        <div class="workshop-footer"><div id="save-status" class="save-status" role="status">Saved locally · ready to manifest</div><button id="save-creation" class="primary-button" type="button"><span aria-hidden="true">◇</span> Save creation</button><button id="enter-ground" class="secondary-button" type="button">Enter proving ground <span aria-hidden="true">↗</span></button><p class="local-note">EARLY PROTOTYPE <span>·</span> DESIGNS SAVED ON THIS DEVICE</p></div>
+      </aside>
+
+      <section id="objective" class="objective" aria-labelledby="objective-title"><div class="objective-topline"><span class="objective-symbol" aria-hidden="true">◇</span><span>YOUR FIRST MANIFESTATION</span><span class="objective-step">01</span></div><h2 id="objective-title">Imagine. Shape. Become.</h2><p id="objective-detail">Create your hook in meditation, then enter the proving ground to put it to the test.</p><div class="objective-bottom"><span class="tiny-diamond" aria-hidden="true"></span> FREEDOM BEGINS WITH PRACTICE</div></section>
+
+      <div id="crosshair" class="crosshair" aria-hidden="true"><span></span></div><div id="target-label" class="target-label"></div><div id="hook-status" class="hook-status" role="status"></div>
+
+      <aside id="practice-panel" class="practice-panel" aria-labelledby="practice-title">
+        <div class="practice-heading"><span class="tiny-diamond" aria-hidden="true"></span><h2 id="practice-title">PUT IT TO THE TEST</h2></div>
+        <div class="practice-buttons"><button id="practice-rival" type="button" title="Catch a rival · 1 / D-pad left">Catch a rival</button><button id="practice-rescue" type="button" title="Rescue an ally · 2 / D-pad up">Rescue an ally</button><button id="practice-breakout" type="button" title="Break a tether · 3 / D-pad right">Break a tether</button><button id="practice-reset" type="button" title="Reset practice · 4 / D-pad down">Reset practice</button></div>
+        <label class="workshop-check practice-consent"><input id="practice-friendly-hooks" type="checkbox" checked /><span>Allow friendly hooks</span></label>
+        <p id="practice-status" role="status">Choose a practice above. These characters are training partners.</p>
+        <div id="practice-target-vitals" class="practice-vitals" hidden><label for="target-health">Partner health</label><progress id="target-health" max="100" value="100"></progress><label for="tether-integrity">Tether integrity</label><progress id="tether-integrity" max="100" value="100"></progress></div>
+        <div id="struggle-meter" class="struggle-meter" hidden><label for="struggle-progress">BREAK FREE <span>Tap B repeatedly · controller R3</span></label><progress id="struggle-progress" max="100" value="0"></progress></div>
+      </aside>
+
+      <div id="actionbar" class="actionbar" aria-label="Game controls"><div class="actionbar-heading"><span class="actionbar-line"></span><span>YOUR MANIFESTATION</span><span class="actionbar-line"></span></div><div class="actionbar-actions"><div class="action" data-action="cast"><kbd>LMB / F</kbd><span>Cast</span></div><div class="action" data-action="release"><kbd>E</kbd><span>Release</span></div><div class="action" data-action="reel"><kbd>Q / R</kbd><span>Reel</span></div><div class="action" data-action="slam"><kbd>T</kbd><span>Lift / slam</span></div><div class="action" data-action="struggle"><kbd>B</kbd><span>Struggle</span></div><div class="action" data-action="jump"><kbd>SPACE</kbd><span>Jump</span></div><div class="action" data-action="meditate"><kbd>M</kbd><span>Meditate</span></div></div><div class="look-hint">WASD to move <span>·</span> Hold RMB to look around</div></div>
+
+      <div class="bottom-right"><span id="controller-status" class="controller-status">KEYBOARD &amp; MOUSE</span><button id="reset-player" class="reset-button" type="button"><span aria-hidden="true">↺</span> Return to circle</button></div>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </main>
+
+    <dialog id="guide-dialog" class="guide-dialog"><button id="guide-close" class="dialog-close" aria-label="Close guide" type="button">×</button><div class="eyebrow">A FIRST STEP INTO THE SOURCE</div><h2>Follow your imagination.</h2><p class="guide-intro">Meditate to choose a preset, describe a supported design, or reshape its points by hand. Save it, enter the proving ground, and aim at anchor rings, crates, or practice characters. Catch, swing, pull, rescue, and slam.</p><div class="guide-columns"><section><h3>Keyboard &amp; mouse</h3><dl><div><dt>Move</dt><dd>W A S D</dd></div><div><dt>Look around</dt><dd>Hold RMB + mouse</dd></div><div><dt>Jump / sprint</dt><dd>Space / Shift</dd></div><div><dt>Cast hook</dt><dd>LMB or F</dd></div><div><dt>Release</dt><dd>E</dd></div><div><dt>Reel in / out</dt><dd>Q / R</dd></div><div><dt>Lift / slam partner</dt><dd>T, then T again</dd></div><div><dt>Break free</dt><dd>Tap B repeatedly</dd></div><div><dt>Rival / rescue practice</dt><dd>1 / 2</dd></div><div><dt>Breakout / reset practice</dt><dd>3 / 4</dd></div><div><dt>Meditate</dt><dd>M</dd></div><div><dt>Map / guide</dt><dd>G / H</dd></div><div><dt>Close menu</dt><dd>Esc</dd></div></dl></section><section><h3>Controller</h3><dl><div><dt>Move / look</dt><dd>Left / right stick</dd></div><div><dt>Jump / sprint</dt><dd>A / L3</dd></div><div><dt>Cast hook</dt><dd>RT</dd></div><div><dt>Release</dt><dd>LB</dd></div><div><dt>Reel in / out</dt><dd>LT / RB</dd></div><div><dt>Lift / slam partner</dt><dd>X, then X again</dd></div><div><dt>Break free</dt><dd>Tap R3 repeatedly</dd></div><div><dt>Rival / rescue practice</dt><dd>D-pad left / up</dd></div><div><dt>Breakout / reset practice</dt><dd>D-pad right / down</dd></div><div><dt>Meditate</dt><dd>Y</dd></div><div><dt>Map / guide</dt><dd>View / Menu</dd></div><div><dt>Workshop focus / select</dt><dd>D-pad up, down / A</dd></div><div><dt>Adjust workshop values</dt><dd>D-pad left / right</dd></div><div><dt>Close menu</dt><dd>B</dd></div></dl></section></div><div class="guide-tip"><span aria-hidden="true">◈</span><p>A manifestation draws from your reserve. Longer reach and greater strength demand more of the Source. Reeling consumes additional reserve. Rest in meditation to recover.</p></div><p class="prototype-note">Local practice characters stand in for players. Tapping to escape takes sustained effort; holding the button does not count. Creating living creatures and online multiplayer are future work.</p></dialog>
+
+    <div id="loading-state" class="loading-state"><span class="loading-sigil" aria-hidden="true">◈</span><div class="eyebrow">THE SOURCE</div><p>Entering the sanctum…</p></div>
+    <div id="error-state" class="error-state" hidden><span class="eyebrow">THE SANCTUM COULD NOT OPEN</span><h2>Something interrupted the manifestation.</h2><p>Your browser may not support the graphics required by this prototype. Try a browser with WebGL enabled, then reload this page.</p></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
