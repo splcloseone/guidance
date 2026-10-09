@@ -58,6 +58,7 @@ Run only one when investigating a specific failure:
 ```sh
 BROWSER_SUITE=creation npm run test:core
 BROWSER_SUITE=practice npm run test:core
+BROWSER_SUITE=sculpt npm run test:core
 ```
 
 The original browser suites remain useful regression coverage:

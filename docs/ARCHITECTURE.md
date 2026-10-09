@@ -11,6 +11,7 @@ will fit without further design.
 | Module | Owns / public entry points |
 | --- | --- |
 | `src/creation.js` | Serializable creation definitions, presets, normalization, description vocabulary, and active-design/library storage. `normalizeCreation`, `creationFromPreset`, `describeCreation`, `loadCreation`, `saveCreation`, `loadLibrary`, `saveLibrary`, `upsertLibrary`. |
+| `src/shaping.js` | Converts a pointer stroke into evenly spaced bounded handles (`shapeFromStroke`); provides an unbent strand for keyboard/controller authoring (`stretchBall`). No UI or renderer state. |
 | `src/workshop.js` | DOM and pointer adapter for presets, descriptions, point editing, shaping assistance, and library controls. `initWorkshop({ getCreation, onChange, storage, toast })` returns `sync`, `saveDesign`, `dispose`. |
 | `src/simulation.js` | Physics world, bodies, player vitals/movement, tethers, costs, practice lifecycle, struggle, and collision damage. `SourceSimulation` is independent of the DOM and renderer. |
 | `src/actors.js` | Local actor descriptors, mutable actor state, snapshots, and escape tuning. No scene or DOM objects. |
@@ -81,8 +82,11 @@ design. Storage errors are surfaced, and in-memory editing can continue.
   segments between points. Assisted pointer dragging snaps to a small grid.
 - The shape editor is a two-dimensional point view with a separate depth
   control. It is not voxel sculpting or unrestricted solid modeling.
-- Stretching a ball into a hook changes its form and seeds an editable hook path.
-  An orb itself cannot cast a tether.
+- Dragging in the preview/editor while drawing converts a ball to the actual
+  traced open path, resampled to at most 12 handles. Tiny drags leave it unchanged.
+  **Stretch into a strand** seeds a straight editable path for keyboard/controller
+  users; it does not substitute a completed hook preset. An orb cannot cast until
+  converted to a path. This is curve drawing, not unrestricted solid sculpting.
 - Preview and world manifestation consume the same definition. Geometry disposal
   matters because editing repeatedly replaces meshes.
 - Point positions and overall scale affect appearance. Thickness also affects

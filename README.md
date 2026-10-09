@@ -19,8 +19,10 @@ The game does not currently have touch movement controls.
 
 ## Make and test a creation
 
-1. Choose a preset in meditation. **Ball** starts a new form; stretch it into a
-   hook to begin making a tether.
+1. Choose **Ball** in meditation. Its editor opens automatically. Click and hold
+   on the ball in the preview or editor, then drag to trace your own hook outline.
+   Release to keep the shape. With keyboard/controller, **Stretch into a strand**
+   produces a blank straight strand you can bend using the point controls.
 2. Open the shape controls. Drag numbered points or adjust their X, Y, and depth
    values. Add/remove points, change thickness, and switch shaping assistance on
    or off. The same shape appears in the preview and in the world.

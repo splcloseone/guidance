@@ -4,12 +4,13 @@ import { resolve } from 'node:path';
 import { installGamepad, pixelStats } from './browser-utils.mjs';
 import { test as creation } from './browser-creation.mjs';
 import { test as practice } from './browser-practice.mjs';
+import { test as sculpt } from './browser-sculpt.mjs';
 
 // Run these suites sequentially: multiple simultaneous software WebGL renderers
 // make physics/input timing unreliable on small cloud machines.
 const url = process.env.APP_URL || 'http://127.0.0.1:5173';
 const output = resolve('test-results/core');
-const suites = { creation, practice };
+const suites = { creation, practice, sculpt };
 const selected = process.env.BROWSER_SUITE;
 if (selected && !suites[selected]) throw new Error(`Unknown core browser suite: ${selected}`);
 await mkdir(output, { recursive: true });

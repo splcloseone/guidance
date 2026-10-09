@@ -7,6 +7,7 @@ import {
   CREATION_PRESETS, creationFromPreset, normalizeCreation, describeCreation,
   loadLibrary, saveLibrary, upsertLibrary,
 } from './creation.js';
+import { shapeFromStroke, stretchBall } from './shaping.js';
 
 const SHAPE_LIMIT = 1.5;
 const MIN_POINTS = 3;
@@ -28,6 +29,8 @@ export function initWorkshop({ getCreation, onChange, storage, toast = () => {} 
   let selectedPoint = 0;
   let dragging = false;
   let dragPointer = null;
+  let drawingMode = getCreation().form === 'orb';
+  let stroke = null;
   const canvas = $('shape-canvas');
   const context = canvas.getContext('2d');
 
@@ -68,7 +71,12 @@ export function initWorkshop({ getCreation, onChange, storage, toast = () => {} 
     button.setAttribute('aria-label', preset.label);
     listen(button, 'click', () => {
       selectedPoint = 0;
+      drawingMode = preset.id === 'orb';
       commit(creationFromPreset(preset.id));
+      if (preset.id === 'orb') {
+        setPanel('shape', true);
+        requestAnimationFrame(() => $('shape-panel').scrollIntoView({ block: 'nearest' }));
+      }
       $('description-status').textContent = '';
       toast(`${preset.label} is ready to shape. Your saved designs remain in your library.`);
     });
@@ -77,13 +85,17 @@ export function initWorkshop({ getCreation, onChange, storage, toast = () => {} 
 
   listen($('stretch-creation'), 'click', () => {
     const current = getCreation();
-    const hook = creationFromPreset('hook');
     selectedPoint = 0;
-    commit({ ...current, form: 'hook', name: current.name === 'Ball of the Source' ? hook.name : current.name, shape: { ...hook.shape, assisted: current.shape.assisted } });
+    drawingMode = false;
+    commit(stretchBall(current));
     setPanel('shape', true);
-    $('shape-status').textContent = 'Your ball now has a curve. Drag its points or adjust them below.';
-    toast('The ball has become a hook. Shape its curve to make it yours.');
+    $('shape-status').textContent = 'A straight strand. Bend its points into your own hook using the sliders or dragging.';
+    canvas.scrollIntoView({ block: 'nearest' });
+    toast('A blank strand is ready. Bend its points to make your shape.');
   });
+
+  listen($('shape-draw'), 'click', () => { drawingMode = true; sync(); });
+  listen($('shape-edit'), 'click', () => { drawingMode = false; sync(); });
 
   listen($('describe-creation'), 'click', () => {
     const result = describeCreation($('creation-description').value, getCreation());
@@ -91,6 +103,7 @@ export function initWorkshop({ getCreation, onChange, storage, toast = () => {} 
     $('description-status').dataset.state = result.creation ? 'success' : 'unsupported';
     if (result.creation) {
       selectedPoint = 0;
+      drawingMode = result.creation.form === 'orb';
       commit(result.creation);
       toast('Your described design is ready to adjust.');
     }
@@ -166,6 +179,7 @@ export function initWorkshop({ getCreation, onChange, storage, toast = () => {} 
   }
   listen(canvas, 'pointerdown', (event) => {
     if (event.button !== 0) return;
+    if (drawingMode) { beginStroke(event, canvas); return; }
     const space = canvasSpace(), pointer = pointerPosition(event);
     let nearest = -1, distance = 22;
     getCreation().shape.points.forEach((point, index) => {
@@ -180,11 +194,53 @@ export function initWorkshop({ getCreation, onChange, storage, toast = () => {} 
     canvas.setPointerCapture(event.pointerId);
     sync(getCreation());
   });
-  listen(canvas, 'pointermove', (event) => { if (dragging && event.pointerId === dragPointer) dragPoint(event); });
+  listen(canvas, 'pointermove', (event) => {
+    if (stroke) extendStroke(event);
+    else if (dragging && event.pointerId === dragPointer) dragPoint(event);
+  });
   const endDrag = () => { dragging = false; dragPointer = null; };
-  listen(canvas, 'pointerup', endDrag);
-  listen(canvas, 'pointercancel', endDrag);
-  listen(canvas, 'lostpointercapture', endDrag);
+  for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) listen(canvas, event, () => { endStroke(); endDrag(); });
+
+  function beginStroke(event, surface) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const rect = surface.getBoundingClientRect();
+    stroke = { pointer: event.pointerId, surface, start: [event.clientX, event.clientY],
+      scale: Math.min(rect.width, rect.height) / 3.5, original: normalizeCreation(getCreation()), points: [[0, 0, 0]], changed: false };
+    surface.setPointerCapture(event.pointerId);
+    $('shape-status').textContent = 'Keep dragging to trace your shape. Release to keep it, then refine its points.';
+  }
+  function extendStroke(event) {
+    if (!stroke || event.pointerId !== stroke.pointer) return;
+    const point = [clamp((event.clientX - stroke.start[0]) / stroke.scale, -1.5, 1.5), clamp((stroke.start[1] - event.clientY) / stroke.scale, -1.5, 1.5), 0];
+    const previous = stroke.points.at(-1);
+    if (Math.hypot(point[0] - previous[0], point[1] - previous[1]) < .025 || stroke.points.length >= 1024) return;
+    stroke.points.push(point);
+    const result = shapeFromStroke(stroke.original, stroke.points);
+    if (result) { stroke.changed = true; commit(result); }
+  }
+  function endStroke() {
+    if (!stroke) return;
+    const changed = stroke.changed;
+    stroke = null;
+    if (changed) {
+      drawingMode = false;
+      selectedPoint = 0;
+      setPanel('shape', true);
+      sync();
+      $('shape-status').textContent = 'Your drawn outline is now your creation. Edit its points, save it, and test it.';
+      toast('Your shape is ready to save and use in the proving ground.');
+    } else $('shape-status').textContent = 'Click and hold, then drag a longer line to draw the shape.';
+  }
+  // The large 3D preview used to ignore dragging entirely. It now accepts the
+  // same gesture as the editor while a ball/new outline is being shaped.
+  const preview = $('creation-preview');
+  listen(preview, 'pointerdown', event => {
+    if (getCreation().form === 'orb' || drawingMode) beginStroke(event, preview);
+    else { setPanel('shape', true); canvas.scrollIntoView({ block: 'nearest' }); }
+  });
+  listen(preview, 'pointermove', extendStroke);
+  for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) listen(preview, event, endStroke);
 
   function drawShape() {
     if (!context || $('shape-panel').hidden) return;
@@ -277,12 +333,16 @@ export function initWorkshop({ getCreation, onChange, storage, toast = () => {} 
     const item = library.find((design) => design.id === $('creation-library').value);
     if (!item) return;
     selectedPoint = 0;
+    drawingMode = item.form === 'orb';
     commit(item);
     toast(`${item.name} loaded. Edit it or enter the proving ground.`);
   });
   listen($('library-new'), 'click', () => {
     selectedPoint = 0;
+    drawingMode = true;
     commit(creationFromPreset('orb'));
+    setPanel('shape', true);
+    canvas.scrollIntoView({ block: 'nearest' });
     $('library-status').textContent = 'A fresh ball is ready. Save creation to add this design to your library.';
     toast('A new ball of the Source. Your saved designs are still here.');
   });
@@ -312,6 +372,10 @@ export function initWorkshop({ getCreation, onChange, storage, toast = () => {} 
 
   function sync(value = getCreation()) {
     const current = normalizeCreation(value);
+    $('shape-draw').setAttribute('aria-pressed', String(drawingMode));
+    $('shape-edit').setAttribute('aria-pressed', String(!drawingMode));
+    canvas.dataset.mode = drawingMode ? 'draw' : 'edit';
+    $('preview-interaction-hint').textContent = current.form === 'orb' || drawingMode ? 'DRAG THE BALL TO DRAW YOUR SHAPE' : 'CLICK TO EDIT YOUR SHAPE';
     document.querySelectorAll('[data-preset]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.preset === current.form)));
     $('stretch-creation').hidden = current.form !== 'orb';
     $('shaping-assistance').checked = current.shape.assisted;
@@ -332,7 +396,7 @@ export function initWorkshop({ getCreation, onChange, storage, toast = () => {} 
     $('shape-thickness').value = current.shape.thickness;
     $('shape-thickness-value').textContent = current.shape.thickness.toFixed(3);
     $('shape-thickness').disabled = current.form === 'orb';
-    $('shape-help').textContent = current.form === 'orb' ? 'These six handles stretch the ball. Select a point and adjust its depth to shape the front or back, or stretch it into a hook above.' : current.form === 'claw' ? 'Drag the numbered points. Two more prongs repeat your curve around the center. Depth bends the shape toward or away from you.' : 'Drag a point to reshape it. Use Depth to bend it toward or away from you. The preview above shows the full form.';
+    $('shape-help').textContent = drawingMode ? 'Click and hold on the ball or grid, then trace a hook or another outline. Release to keep the shape. For keyboard/controller, choose Stretch into a strand and bend its points.' : current.form === 'orb' ? 'These handles stretch the ball. Choose Draw a shape to pull it into a new outline, or Stretch into a strand to bend it with the point controls.' : current.form === 'claw' ? 'Drag the numbered points. Two more prongs repeat your curve around the center. Depth bends the shape toward or away from you.' : 'Drag a point to reshape it. Use Depth to bend it toward or away from you. The preview above shows the full form.';
     drawShape();
   }
 
@@ -341,6 +405,7 @@ export function initWorkshop({ getCreation, onChange, storage, toast = () => {} 
   if (!loadedLibrary.available) $('library-status').textContent = 'Device storage is unavailable. Designs can be tested during this session.';
   syncLibrary();
   sync();
+  if (getCreation().form === 'orb') setPanel('shape', true);
   return {
     sync, saveDesign,
     dispose() { controller.abort(); observer.disconnect(); },

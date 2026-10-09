@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#112526" />
-    <meta name="prototype-version" content="0.2.0" />
+    <meta name="prototype-version" content="0.2.1" />
     <link rel="icon" type="image/svg+xml" href="/sigil.svg" />
     <meta name="description" content="Enter the Stillwater Sanctum. Shape a manifestation of the Source, then put it to the test in a third-person proving ground." />
     <title>The Source — Meditation Prototype</title>
@@ -45,7 +45,7 @@
       <aside id="workshop" class="workshop" aria-labelledby="workshop-title">
         <div class="workshop-header"><div class="eyebrow"><span class="tiny-diamond" aria-hidden="true"></span> MEDITATION <span class="eyebrow-divider">/</span> CREATION WORKSHOP</div><h1 id="workshop-title">Nothing into something<span>.</span></h1><p>Begin with a ball of the Source.<br>Shape it. Save it. Discover its possibilities.</p></div>
         <div class="workshop-body">
-          <div class="creation-preview-wrap"><div class="preview-grid" aria-hidden="true"></div><canvas id="creation-preview" width="620" height="270" aria-label="Preview of your manifested tethered hook"></canvas><span class="preview-label">MANIFESTATION STUDY</span><span class="preview-index">01 / ∞</span></div>
+          <div class="creation-preview-wrap"><div class="preview-grid" aria-hidden="true"></div><canvas id="creation-preview" width="620" height="270" aria-label="Preview of your manifested tethered hook"></canvas><span id="preview-interaction-hint" class="preview-label">CLICK TO EDIT YOUR SHAPE</span><span class="preview-index">01 / ∞</span></div>
           <div class="section-divider"><span>FORM &amp; FUNCTION</span><span class="section-divider-line"></span><span aria-hidden="true">✧</span></div>
           <label class="field-label" for="creation-name">CREATION NAME</label>
           <input id="creation-name" class="name-input" type="text" maxlength="32" value="Tethered Hook" autocomplete="off" spellcheck="false" />
@@ -53,7 +53,7 @@
           <section class="creation-tools" aria-label="Shape your creation">
             <div class="tool-heading"><span class="field-label">CHOOSE A STARTING FORM</span><span class="tool-caption">Fully editable</span></div>
             <div id="creation-presets" class="creation-presets" aria-label="Creation presets"></div>
-            <button id="stretch-creation" class="workshop-small-button stretch-button" type="button">Stretch the ball into a hook <span aria-hidden="true">↗</span></button>
+            <button id="stretch-creation" class="workshop-small-button stretch-button" type="button">Stretch into a strand <span aria-hidden="true">↗</span></button>
 
             <button id="description-toggle" class="workshop-disclosure" type="button" aria-expanded="false" aria-controls="description-panel"><span><span aria-hidden="true">✧</span> Describe your idea</span><span aria-hidden="true">+</span></button>
             <div id="description-panel" class="workshop-tool-panel" hidden>
@@ -66,6 +66,7 @@
 
             <button id="shape-toggle" class="workshop-disclosure" type="button" aria-expanded="false" aria-controls="shape-panel"><span><span aria-hidden="true">◇</span> Shape by hand</span><span aria-hidden="true">+</span></button>
             <div id="shape-panel" class="workshop-tool-panel" hidden>
+              <div class="tool-button-row"><button id="shape-draw" class="workshop-small-button" type="button" aria-pressed="false">Draw a shape</button><button id="shape-edit" class="workshop-small-button" type="button" aria-pressed="true">Edit points</button></div>
               <label class="workshop-check"><input id="shaping-assistance" type="checkbox" checked /><span>Shaping assistance <small>Smooth curves and snap while dragging</small></span></label>
               <div class="shape-canvas-wrap"><canvas id="shape-canvas" width="560" height="420" aria-label="Front view of your shape. Drag its numbered points, or use the point controls below."></canvas><span class="shape-view-label">FRONT VIEW · X / Y</span></div>
               <p id="shape-help" class="tool-help">Drag a point to reshape it. Use Depth to bend it toward or away from you. The preview above shows the full form.</p>

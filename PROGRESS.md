@@ -4,6 +4,21 @@ Updated 2026-10-09. Read README.md, AGENTS.md, docs/ARCHITECTURE.md, and
 DESIGN.md before continuing. Prototype 0.2.0 is published and ready for player
 feedback. Preserve the release and test evidence below when extending it.
 
+## Ball-shaping fix (0.2.1, release in progress)
+
+The user reported that the ball could not be shaped. The old orb editor changed
+only ellipsoid bounds, while the stretch button substituted a finished preset.
+The fix adds actual stroke-to-curve authoring through both the preview and editor.
+Choosing Ball opens the editor; its traced outline becomes the saved tether path.
+The keyboard/controller stretch button supplies an unbent strand to edit.
+
+Added src/shaping.js with bounded arc-length resampling, tests/shaping.test.js,
+and the core browser "sculpt" suite. All 46 unit tests pass. The sculpt browser
+suite passed actual preview/editor drawing, geometry autosave/reload, catching a
+world anchor with the drawn creation, and keyboard bending of a blank strand.
+Creation regression and final standalone packaging checks are running. The public
+site still serves 0.2.0 until this fix is published and its HTML is verified.
+
 ## Current work
 
 The user approved developing the creation system with editable presets, optional
