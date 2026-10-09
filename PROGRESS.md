@@ -1,10 +1,10 @@
 # The Source — continuation checkpoint
 
 Updated 2026-10-09. Read README.md, AGENTS.md, docs/ARCHITECTURE.md, and
-DESIGN.md before continuing. Prototype 0.2.0 is published and ready for player
+DESIGN.md before continuing. Prototype 0.2.1 is published and ready for player
 feedback. Preserve the release and test evidence below when extending it.
 
-## Ball-shaping fix (0.2.1, release in progress)
+## Ball-shaping fix (0.2.1, published)
 
 The user reported that the ball could not be shaped. The old orb editor changed
 only ellipsoid bounds, while the stretch button substituted a finished preset.
@@ -16,8 +16,11 @@ Added src/shaping.js with bounded arc-length resampling, tests/shaping.test.js,
 and the core browser "sculpt" suite. All 46 unit tests pass. The sculpt browser
 suite passed actual preview/editor drawing, geometry autosave/reload, catching a
 world anchor with the drawn creation, and keyboard bending of a blank strand.
-Creation regression and final standalone packaging checks are running. The public
-site still serves 0.2.0 until this fix is published and its HTML is verified.
+Creation regression and standalone package checks also passed, with no browser
+errors or extra runtime asset requests. ZIP integrity and HTML equality passed.
+The fix is committed on source-prototype at 57c65a7. GitHub Pages reports built
+for a2bf8c857cd516ac954adfff3b76b671761dbdd4, and the public HTML matches the
+tested release exactly. No schema migration or clearing browser data is needed.
 
 ## Current work
 
@@ -44,7 +47,7 @@ Implemented and released:
 - Publish helper defaults to a dry run; --publish updates only origin/gh-pages
   without changing the development checkout or forcing remote history.
 
-## Verification during this upgrade
+## Previous release verification (0.2.0)
 
 - All 43 unit tests pass, including legacy save migration, library capacity,
   custom geometry, impact damage, tether breakout and near-face rescue catches.
@@ -87,13 +90,13 @@ WebGL and should run sequentially. Reports/screenshots are in ignored test-resul
 
 ## Hosting and source preservation
 
-Prototype 0.2.0 is live:
-https://splcloseone.github.io/guidance/?v=0.2.0
+Prototype 0.2.1 is live:
+https://splcloseone.github.io/guidance/?v=0.2.1
 
 GitHub Pages uses gh-pages, root folder. Published commit:
-c0683e78b75c320d43adbc1c97d30f0b6fa53e83
+a2bf8c857cd516ac954adfff3b76b671761dbdd4
 HTML SHA-256:
-a20b96026a5ab9f5d6f5ec75ed07b0deddc4395b1ac2bd088f5de5413547c93f
+664e753bdaea8ec83781b7d8a65bbfeb5ebb51fbd67f0cb751aad9815e08d433
 
 Complete editable source, tests and handoff are on source-prototype:
 https://github.com/splcloseone/guidance/tree/source-prototype
