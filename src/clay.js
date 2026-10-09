@@ -17,6 +17,17 @@ export function clayPreset(kind = 'ball') {
     const px=(x-N/2)/(N/2),py=(y-N/2)/(N/2),pz=(z-N/2)/(N/2);
     let d=.55-Math.hypot(px,py,pz);
     if(kind==='sword') d=Math.max(box(px,py-.18,pz,.10,.60,.07),box(px,py+.43,pz,.35,.075,.10),box(px,py+.62,pz,.075,.19,.075));
+    if(['axe','pickaxe','hoe','sickle','scythe'].includes(kind)) {
+      const shaft=box(px,py+(kind==='sickle'?.22:0),pz,.075,kind==='sickle'?.52:.78,.075);
+      let head=box(px-.19,py-.43,pz,.27,.25,.08);
+      if(kind==='pickaxe')head=Math.min(.085-Math.abs(py-(.5-.4*px*px)),.7-Math.abs(px),.07-Math.abs(pz));
+      if(kind==='hoe')head=box(px,py-.5,pz-.19,.16,.08,.27);
+      if(kind==='sickle'||kind==='scythe'){
+        const r=Math.hypot(px-.25,py-.35);
+        head=Math.min(.095-Math.abs(r-.36),.07-Math.abs(pz),px+.12);
+      }
+      d=Math.max(shaft,head);
+    }
     if(kind==='pants') {
       const legs = Math.max(box(px-.25,py+.28,pz,.21,.45,.24),box(px+.25,py+.28,pz,.21,.45,.24));
       const waist = box(px,py-.32,pz,.47,.24,.27);
@@ -25,13 +36,14 @@ export function clayPreset(kind = 'ball') {
     }
     field[index(x,y,z)]=clamp(Math.round(128+d*380),0,255);
   }
-  return { data: encodeClay(field), purpose: kind==='pants'?'armor':kind==='sword'?'sword':'sculpture' };
+  return { data: encodeClay(field), purpose: kind==='pants'?'armor':['sword','axe','pickaxe','hoe','sickle','scythe'].includes(kind)?'sword':'sculpture', ...(kind!=='ball'?{kind}: {}) };
 }
 let defaultBall;
 export function normalizeClay(value) {
   defaultBall ||= clayPreset();
   return { data: typeof value?.data==='string' && value.data.length===COUNT*2 && /^[a-f\d]+$/i.test(value.data) ? value.data.toLowerCase() : defaultBall.data,
-    purpose: ['sculpture','armor','sword'].includes(value?.purpose) ? value.purpose : 'sculpture' };
+    purpose: ['sculpture','armor','sword'].includes(value?.purpose) ? value.purpose : 'sculpture',
+    ...(['sword','pants','axe','pickaxe','hoe','sickle','scythe'].includes(value?.kind)?{kind:value.kind}:{}) };
 }
 function sample(f,x,y,z) {
   x=clamp(x,0,N-1);y=clamp(y,0,N-1);z=clamp(z,0,N-1);

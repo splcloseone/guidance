@@ -7,7 +7,8 @@ export function practiceInstructions(practice = {}) {
   };
   if (finished[practice.status]) return finished[practice.status];
   return {
-    melee: 'LMB / RT swings. Press again during recovery to chain three strikes. C / controller B spikes. The rival warns before countering.',
+    combo: 'Select hook slot 1, catch the rival, then select sword slot 2. Tap four attacks; the last is heavy.',
+    melee: 'LMB / RT swings. Press again during recovery to chain four strikes. C / controller B spikes. The rival warns before countering.',
     rival: 'Catch the rival, reel them closer, then lift and slam. They will struggle to escape.',
     rescue: 'Catch your ally near the ledge and reel them to safety. Their momentum pulls on you too.',
     breakout: 'Tap the struggle button repeatedly. Each new press counts; holding does not. Keep moving while caught.',
@@ -32,12 +33,12 @@ export function createPracticeUI({ simulation, startPractice, resetPractice, sto
       catch { toast('Your friendly-hook preference could not be saved on this device.'); }
     });
   }
-  for (const mode of ['rival', 'rescue', 'breakout', 'melee']) byId(`practice-${mode}`)?.addEventListener('click', () => startPractice(mode));
+  for (const mode of ['rival', 'rescue', 'breakout', 'melee', 'combo']) byId(`practice-${mode}`)?.addEventListener('click', () => startPractice(mode));
   byId('practice-reset')?.addEventListener('click', resetPractice);
   return {
     update(snapshot, device) {
       const incoming = snapshot.incomingTether;
-      const target = snapshot.actors?.find(actor => actor.id === (snapshot.hook?.bodyId || (snapshot.practice.mode === 'melee' ? 'practice-rival' : null)));
+      const target = snapshot.actors?.find(actor => actor.id === (snapshot.hook?.bodyId || (['melee','combo'].includes(snapshot.practice.mode) ? 'practice-rival' : null)));
       const escape = incoming?.escapeProgress ?? target?.escapeProgress ?? 0;
       const status = byId('practice-status');
       if (status) status.textContent = incoming

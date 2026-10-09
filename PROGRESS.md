@@ -3,6 +3,25 @@
 Updated 2026-10-09. Read README.md, AGENTS.md, docs/ARCHITECTURE.md and DESIGN.md
 before continuing. Preserve the earlier release evidence below.
 
+## Prototype 3 (0.4.0) — implementation checkpoint, not published yet
+
+The user authorized building on 2026-10-09. Implemented four saved loadout slots,
+independent armor/weapon upkeep, four-input sword combo with heavy finisher,
+automatic opponent pull, tap-to-toggle exploration reeling, easier discrete
+struggle, combat meditation/edit/reset lock persisted across reload, in-world
+meditation orb, white body/weapon outline aura, tool presets and touch controls.
+Old creation/library keys remain intact. Tool life skills are labeled planned.
+
+Initial verification: all 59 Node tests passed; new Prototype 3 desktop and mobile
+browser flows passed with no console/page errors. Screenshots reviewed for the
+world orb, white aura, portrait combo and landscape touch layout. Tests include
+keyboard combo, synthetic controller slots/dismiss/attack, simultaneous touch
+movement and look, combat lock and loadout persistence. Physical devices untested.
+
+Next: verify the captured-projectile settings fix; update legacy browser checks
+for prepared slots and combat restrictions; finish documentation, standalone
+verification and publication. No 0.4 release is public yet. Vite may run on5173.
+
 ## 0.3 — solid clay, white aura and sword combat
 
 Prototype **0.3.0 is published and verified**:

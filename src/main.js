@@ -1,9 +1,13 @@
+import { loadLoadout } from './loadout.js';
+import { initLoadoutUI } from './loadout-ui.js';
+import { createSummoningView } from './summoning-view.js';
 import { createCombatView } from './combat-view.js';
 import { initClayWorkshop } from './clay-workshop.js';
 import * as THREE from 'three';
 import './style.css';
 import { createWorld } from './world.js';
-import { SourceSimulation } from './simulation.js';
+import { solidCosts } from './combat.js';
+import { SourceSimulation, tetherCosts } from './simulation.js';
 import { createAvatar, createHook } from './models.js';
 import { Controls, connectedGamepad } from './controls.js';
 import { DEFAULT_CREATION, normalizeCreation, loadCreation, saveCreation } from './creation.js';
@@ -33,7 +37,9 @@ let lastMenuAxis = 0;
 let autoSaveTimer;
 let lastSafePosition = [0, 1.2, 15];
 let lastSavedAt = 0;
-let workshop, clayWorkshop, combatView;
+let workshop, clayWorkshop, combatView, loadoutUI, summoningView;
+let runtimeHookSignature='';
+const loadedSlots=loadLoadout(storage);
 let practiceUI;
 let manifestationSignature = '';
 let scene, renderer, camera, world, simulation, controls, avatar, rope, hook, previewRenderer, previewScene, previewCamera, previewHook;
@@ -80,8 +86,9 @@ function applyCreation() {
     const selected=button.dataset.color.toLowerCase()===creation.color.toLowerCase();
     button.setAttribute('aria-pressed',String(selected));button.classList.toggle('selected',selected);
   });
-  $('activation-cost').textContent = creation.form === 'clay' ? '10' : `${simulation.activationCost.toFixed(1)}`;
-  $('upkeep-cost').textContent = creation.form === 'clay' ? '1 / sec' : `${simulation.upkeepCost.toFixed(2)} / sec`;
+  const costs=creation.form==='clay'?solidCosts(creation):tetherCosts(creation);
+  $('activation-cost').textContent=costs.activation.toFixed(1);
+  $('upkeep-cost').textContent=`${costs.upkeep.toFixed(2)} / sec`;
   document.documentElement.style.setProperty('--source-color', creation.color);
   if (hook) { hook.material.color.set(creation.color); hook.material.emissive.set(creation.color); hook.group.scale.setScalar(creation.hookSize); }
   if (previewHook) { previewHook.material.color.set(creation.color); previewHook.material.emissive.set(creation.color); previewHook.group.scale.setScalar(creation.hookSize * 1.25); }
@@ -118,16 +125,17 @@ function save(showToast=true) {
 }
 
 function setMeditation(value) {
+  if(!simulation.setMeditation(value)){toast('Meditation is locked during combat. Disengage first.');return false;}
   meditating = value;
-  simulation.meditating = value;
   document.body.classList.toggle('meditating',value);
   $('workshop').setAttribute('aria-hidden', String(!value));
   $('meditate-toggle').textContent = value ? 'Return to ground' : 'Meditate';
   $('mode-label').textContent = value ? 'MEDITATION' : 'PROVING GROUND';
   if (value) { simulation.combat.reset(); simulation.release('meditation'); projectile = null; controls.clear(); }
-  else { $('enter-ground').blur(); $('game-canvas').focus({preventScroll:true}); toast('Aim at a ring, crate, or practice character. Cast with F / RT.'); }
+  else { simulation.selectSlot(0); $('enter-ground').blur(); $('game-canvas').focus({preventScroll:true}); toast('Aim at a ring, crate, or practice character. Cast with F / RT.'); }
   save(false);
   resize();
+  return true;
 }
 
 function toggleMap() {
@@ -146,7 +154,7 @@ function findTarget() {
     while (object && !object.userData.bodyId) object = object.parent;
     if (!object) continue;
     const distance = hit.point.distanceTo(new THREE.Vector3(simulation.player.position.x,simulation.player.position.y,simulation.player.position.z));
-    if (distance > creation.reach) return { ...hit, bodyId:object.userData.bodyId, distance, inRange:false };
+    if (distance > simulation.tetherCreation.reach) return { ...hit, bodyId:object.userData.bodyId, distance, inRange:false };
     return { ...hit, bodyId:object.userData.bodyId, distance, inRange:true };
   }
   return null;
@@ -154,28 +162,30 @@ function findTarget() {
 
 function cast() {
   if (meditating || $('guide-dialog').open || viewExpanded) return;
-  if (creation.form === 'clay') { toast('Use N / LT + X to manifest your solid design. Tethers use the curve editor.'); return; }
-  if (creation.form === 'orb') { toast('Stretch the ball of the Source into a tethered form in meditation first.'); return; }
+  if (simulation.tetherCreation.form === 'clay') { toast('Select a prepared hook slot first.'); return; }
+  if (simulation.tetherCreation.form === 'orb') { toast('Stretch the ball of the Source into a tethered form in meditation first.'); return; }
   if (simulation.hook || projectile) { toast('Release the current tether before casting again.'); return; }
   const cost = simulation.activationCost;
   if (simulation.source < cost) { toast('Not enough of the Source. Meditate to recover.'); return; }
   const target = findTarget();
+  if(simulation.actors.get(target?.bodyId)?.role==='rival')simulation.markCombat();
+  simulation._event('summoned',{form:'hook'});
   const origin = new THREE.Vector3(simulation.player.position.x,simulation.player.position.y+.65,simulation.player.position.z);
   raycaster.setFromCamera(aim,camera);
-  const destination = target?.inRange ? target.point.clone() : raycaster.ray.at(creation.reach,new THREE.Vector3());
+  const destination = target?.inRange ? target.point.clone() : raycaster.ray.at(simulation.tetherCreation.reach,new THREE.Vector3());
   // Keep the attachment point in body space while a moving target is approached.
   let localPoint = null;
   if (target?.inRange) {
     const point = simulation.player.position.clone(); point.set(target.point.x, target.point.y, target.point.z);
     localPoint = simulation.bodies.get(target.bodyId)?.pointToLocalFrame(point);
   }
-  projectile = { origin, position:origin.clone(), destination, localPoint, target: target?.inRange ? target : null, progress:0, duration: Math.max(.13,origin.distanceTo(destination)/48) };
+  projectile = { definition:normalizeCreation(simulation.tetherCreation), origin, position:origin.clone(), destination, localPoint, target: target?.inRange ? target : null, progress:0, duration: Math.max(.13,origin.distanceTo(destination)/48) };
   $('hook-status').textContent='MANIFESTING';
 }
 
 function release() {
   projectile = null;
-  if (simulation.hook) simulation.release();
+  simulation.dismissSlot();
   $('hook-status').textContent='';
 }
 
@@ -190,16 +200,19 @@ function aimAt(id) {
 }
 
 function startPractice(mode) {
+  if(simulation.inCombat){toast('Disengage before restarting practice.');return false;}
   if ($('guide-dialog').open) $('guide-dialog').close();
   if (viewExpanded) toggleMap();
   projectile = null;
   setMeditation(false);
-  simulation.startPractice(mode);
+  if(!simulation.startPractice(mode))return false;
+  if(mode==='combo')simulation.selectSlot(0);
+  document.body.classList.remove('practice-open');
   controls.clear();
   aimAt(mode === 'rescue' ? 'practice-ally' : 'practice-rival');
   if(mode === 'melee') pitch=.2;
   $('game-canvas').focus({ preventScroll: true });
-  toast(mode === 'melee' ? 'Physical sword equipped. LMB / RT swings; C / B spikes. Watch for the rival’s counter.' : mode === 'breakout' ? 'Tap B / R3 repeatedly to escape. Holding does not count as repeated presses.' : mode === 'rescue' ? 'Catch your ally with F / RT before they fall, then reel them to safety.' : 'Catch the rival. T / X lifts them; press again to slam.');
+  toast(mode === 'combo' ? 'Slot 1: hook and auto-pull. Slot 2: four sword attacks, finishing heavy.' : mode === 'melee' ? 'Physical sword equipped. LMB / RT swings; C / B spikes. Watch for the rival’s counter.' : mode === 'breakout' ? 'Tap B / R3 repeatedly to escape. Holding does not count as repeated presses.' : mode === 'rescue' ? 'Catch your ally with F / RT before they fall, then reel them to safety.' : 'Catch the rival. T / X lifts them; press again to slam.');
 }
 
 function drawMiniMap() {
@@ -231,18 +244,23 @@ function drawMiniMap() {
 
 function updateHUD() {
   const combat = simulation.combat;
+  loadoutUI?.update();
+  $('combat-lock').textContent=simulation.inCombat?`IN COMBAT · meditation locked · ${Math.ceil(simulation.combatRemaining)}s`:'OUT OF COMBAT · meditation available';
+  $('touch-struggle').hidden=!simulation.incomingTether;
+  $('touch-reel').hidden=!simulation.hook;
+  $('touch-reel').textContent=simulation.hook?.autoReel?'Auto pull':simulation.hook?.reel?'Stop reel':'Reel';
   $('combat-status').textContent = `${combat.spiking ? 'WHITE AURA · 2/sec' : 'Aura calm'} · ${combat.weapon.replace('-', ' ')}${combat.wearing ? ' · armor active' : ''}`;
   $('spike-toggle').setAttribute('aria-pressed',String(combat.spiking));
-  $('equip-toggle').textContent = `Equip: ${combat.weapon.replace('-', ' ')} · V / ↓`;
-  $('manifest-solid').disabled = creation.form !== 'clay' || creation.solid.purpose === 'sculpture';
+  $('equip-toggle').textContent = `Physical equipment: ${combat.weapon.replace('-', ' ')} · V`;
+  $('manifest-solid').textContent = 'Use selected saved slot';
   $('source-fill').style.width=`${simulation.source}%`;
   $('source-value').textContent=`${Math.ceil(simulation.source)} / 100`;
   $('stamina-fill').style.width=`${simulation.stamina}%`;
   $('health-fill').style.width=`${simulation.health}%`;
   $('source-value').classList.toggle('depleted',simulation.source<15);
-  $('controller-status').textContent=controls.gamepadName?'Controller connected':'Keyboard & mouse';
+  $('controller-status').textContent=controls.device==='touch'?'Touch controls':controls.gamepadName?'Controller connected':'Keyboard & mouse';
   document.body.dataset.input=controls.device;
-  const labels=controls.device==='controller'?{cast:'RT',release:'LB',reel:'LT / RB',jump:'A',meditate:'Y',slam:'X',struggle:'R3'}:{cast:'LMB / F',release:'E',reel:'Q / R',jump:'SPACE',meditate:'M',slam:'T',struggle:'B'};
+  const labels=controls.device==='controller'?{cast:'RT',release:'LB',reel:'Tap LT / RB',jump:'A',meditate:'Y',slam:'X',struggle:'R3'}:{cast:'LMB / F',release:'E',reel:'Tap Q / R',jump:'SPACE',meditate:'M',slam:'T',struggle:'B'};
   labels.cast = controls.device === 'controller' ? 'RT' : combat.weapon === 'tether' ? 'LMB / F' : 'LMB';
   document.querySelector('[data-action=cast] span').textContent = combat.weapon === 'tether' ? 'Cast' : 'Attack';
   document.querySelectorAll('[data-action]').forEach(element=>{const key=element.matches('kbd')?element:element.querySelector('kbd');if(key)key.textContent=labels[element.dataset.action]||'';});
@@ -250,7 +268,7 @@ function updateHUD() {
   if (simulation.hook) {
     $('hook-status').textContent=`TETHERED · ${simulation.hook.length.toFixed(1)} m`;
     const actor = simulation.actors?.get(simulation.hook.bodyId);
-    $('target-label').textContent=actor ? actor.role === 'ally' ? 'Ally caught · reel them to safety' : `Rival caught · ${simulation.hook.stage === 'lifted' ? 'slam' : 'lift'} with ${controls.device === 'controller' ? 'X' : 'T'}` : 'Reel in to ascend · move to build momentum';
+    $('target-label').textContent=simulation.hook.autoReel ? 'Pulling opponent to you · select your sword when close' : actor ? actor.role === 'ally' ? 'Ally caught · reel them to safety' : `Rival caught · ${simulation.hook.stage === 'lifted' ? 'slam' : 'lift'} with ${controls.device === 'controller' ? 'X' : 'T'}` : 'Reel in to ascend · move to build momentum';
   } else if(!projectile && !meditating) {
     activeTarget=findTarget();
     $('crosshair').classList.toggle('on-target',!!activeTarget?.inRange);
@@ -264,7 +282,7 @@ function updateHUD() {
   }
   if (meditating) {
     $('objective-title').textContent='A thought, given form';
-    $('objective-detail').textContent='Choose a preset, shape the Source, or describe a tethered creation. Save it and test it.';
+    $('objective-detail').textContent='Choose a preset, customize it, then assign it to a saved slot before entering battle.';
   } else if (simulation.practice?.mode) {
     $('objective-title').textContent = 'Practice your creation';
     $('objective-detail').textContent = practiceInstructions(simulation.practice);
@@ -273,7 +291,7 @@ function updateHUD() {
     $('objective-detail').textContent='Look up at a brass ring with right mouse, then left-click or press F to cast.';
   } else if(!swingComplete) {
     $('objective-title').textContent='02 / Trust the tether';
-    $('objective-detail').textContent='Hold Q to reel in. Use movement to swing, then E to release with momentum.';
+    $('objective-detail').textContent='Tap Q to start or stop reeling. Use movement to swing, then E to release with momentum.';
   } else if(!pullComplete) {
     $('objective-title').textContent='03 / Move the world';
     $('objective-detail').textContent='Catch a wooden crate and reel it toward you. Lighter objects move more easily.';
@@ -289,7 +307,7 @@ function updateControllerMenu(dt) {
   const down=i=>!!pad.buttons[i]?.pressed;
   const dialogOpen=$('guide-dialog').open || $('clay-dialog').open;
   if(!meditating&&!dialogOpen){lastPadMenu=pad.buttons.map(b=>b.pressed);return;}
-  const elements=$('clay-dialog').open?Array.from($('clay-dialog').querySelectorAll('button,input,select,summary')).filter(el=>!el.disabled&&el.getClientRects().length):dialogOpen?[$('guide-close')]:Array.from($('workshop').querySelectorAll('button,input,select,textarea')).filter(element => !element.disabled && element.getClientRects().length);
+  const elements=$('clay-dialog').open?Array.from($('clay-dialog').querySelectorAll('button,input,select,summary')).filter(el=>!el.disabled&&el.getClientRects().length):dialogOpen?[$('guide-close')]:Array.from($('workshop').querySelectorAll('button,input,select,textarea,summary')).filter(element => !element.disabled && element.getClientRects().length);
   const vertical=pad.axes[1]||0;
   const now=performance.now();
   let direction=0;
@@ -328,7 +346,8 @@ function updateCamera(dt) {
   const p=simulation.player.position;
   if(simulation.grounded&&p.y>=.3&&p.y<20)lastSafePosition=[p.x,p.y+.025,p.z];
   cameraTarget.set(p.x,p.y+1.6,p.z);
-  const distance=meditating?8.5:8;
+  if(meditating&&controls.touchEnabled&&innerWidth<600)cameraTarget.y=p.y-1;
+  const distance=meditating?6.5:8;
   desiredCamera.set(Math.sin(yaw)*Math.cos(pitch)*distance,Math.sin(pitch)*distance,Math.cos(yaw)*Math.cos(pitch)*distance);
   // Shorten the camera arm near the floor without changing the aim direction.
   if(cameraTarget.y+desiredCamera.y<.35)desiredCamera.multiplyScalar(Math.max(.1,(cameraTarget.y-.35)/-desiredCamera.y));
@@ -338,6 +357,10 @@ function updateCamera(dt) {
 }
 
 function updateRope(time) {
+  const definition=simulation.hook?.definition||projectile?.definition||simulation.tetherCreation;
+  const signature=JSON.stringify(definition);
+  if(runtimeHookSignature!==signature){scene.remove(hook.group);hook.dispose();hook=createHook(definition);hook.group.scale.setScalar(definition.hookSize);scene.add(hook.group);runtimeHookSignature=signature;rope.material.color.set(definition.color);}
+
   let end=null;
   if(projectile)end=projectile.position;
   else if(simulation.hook){const p=simulation.anchorPosition();end=new THREE.Vector3(p.x,p.y,p.z);}
@@ -358,11 +381,14 @@ function cycleEquipment() {
   const modes=['tether','fists','sword',...(simulation.combat.manifested?['source-sword']:[])];
   simulation.combat.equip(modes[(modes.indexOf(simulation.combat.weapon)+1)%modes.length]);
 }
-function manifestSolid() {
-  if(!simulation.combat.manifest()) toast('Choose a solid armor or sword design in meditation, then manifest it here.');
+function selectSlot(index) {
+  const ok=simulation.selectSlot(index);
+  if(!ok)toast('This slot is empty, needs reserve, or must wait for your swing to finish.');
+  return ok;
 }
+function manifestSolid() { selectSlot(simulation.selectedSlot); }
 function primary() {
-  if(simulation.combat.weapon === 'tether') { if(creation.form==='clay')manifestSolid();else cast(); return; }
+  if(simulation.combat.weapon==='tether'){cast();return;}
   const direction=new THREE.Vector3();camera.getWorldDirection(direction);
   simulation.combat.attack(direction.toArray());
 }
@@ -385,13 +411,17 @@ function frame() {
       if(action==='spike')simulation.combat.toggleAura();
       if(action==='equip')cycleEquipment();
       if(action==='manifest')manifestSolid();
+      if(action.startsWith('slot-'))selectSlot(Number(action.slice(5)));
+      if(action==='reel-toggle')simulation.toggleReel(1);
+      if(action==='payout-toggle')simulation.toggleReel(-1);
+      if(action==='struggle')simulation._struggle();
       if(action==='release')release();
       if(action==='jump')jumpPending=true;
       if(action==='slam'){
         const direction = new THREE.Vector3(); camera.getWorldDirection(direction);
         if(!simulation.slam(direction.toArray())) toast('Catch a rival to lift and slam. Each motion needs reserve and a brief recovery.');
       }
-      if (['practice-rival','practice-rescue','practice-breakout','practice-melee'].includes(action)) startPractice(action.slice(9));
+      if (['practice-rival','practice-rescue','practice-breakout','practice-melee','practice-combo'].includes(action)) startPractice(action.slice(9));
       if (action === 'practice-reset') { projectile = null; simulation.resetPractice(); }
     }
   }
@@ -399,7 +429,7 @@ function frame() {
   const blocked=meditating||$('guide-dialog').open||viewExpanded;
   const mx=blocked?0:input.x*Math.cos(yaw)-input.forward*Math.sin(yaw);
   const mz=blocked?0:-input.x*Math.sin(yaw)-input.forward*Math.cos(yaw);
-  simulation.step(dt,{moveX:mx,moveZ:mz,jump:jumpPending,sprint:!blocked&&input.sprint,reel:blocked?0:input.reel,struggle:!blocked&&input.struggle,meditating});
+  simulation.step(dt,{moveX:mx,moveZ:mz,jump:jumpPending,sprint:!blocked&&input.sprint,struggle:!blocked&&input.struggle,meditating});
   jumpPending=false;
   if(projectile){
     if (projectile.target && projectile.localPoint) {
@@ -408,14 +438,15 @@ function frame() {
     }
     projectile.progress+=dt/projectile.duration;
     projectile.position.lerpVectors(projectile.origin,projectile.destination,Math.min(1,projectile.progress));
-    if(projectile.progress>=1){const target=projectile.target;projectile=null;if(target&&simulation.attach(target.bodyId,target.point.toArray())){hookCount++;toast('Connected. Reel in with Q / LT; release with E / LB.');}else toast(target?'The hook could not hold. Move closer and try again.':'Nothing caught. Aim at a beam, ring, or movable crate.');}
+    if(projectile.progress>=1){const {target,definition}=projectile;projectile=null;if(target&&simulation.attach(target.bodyId,target.point.toArray(),definition)){hookCount++;toast('Connected. Combat pulls automatically; otherwise tap Q / LT to reel.');}else toast(target?'The hook could not hold. Move closer and try again.':'Nothing caught. Aim at a beam, ring, or movable crate.');}
   }
   const p=simulation.player.position;
-  avatar.group.position.set(p.x,p.y-.6,p.z);
+  avatar.group.position.set(p.x,p.y-.6-(meditating?.35:0),p.z);
+  if(meditating)avatar.group.rotation.y=Math.PI-.3;
   const speed=Math.hypot(simulation.player.velocity.x,simulation.player.velocity.z);
-  if(speed>.2){const angle=Math.atan2(-simulation.player.velocity.x,-simulation.player.velocity.z);avatar.group.rotation.y+=Math.atan2(Math.sin(angle-avatar.group.rotation.y),Math.cos(angle-avatar.group.rotation.y))*Math.min(dt*12,1);}
-  avatar.legs.forEach((leg,i)=>leg.rotation.x=meditating?-.8:Math.sin(time*10+i*Math.PI)*Math.min(speed*.07,.55));
-  avatar.arms.forEach((arm,i)=>arm.rotation.x=simulation.hook||projectile?-2.1:meditating?-.65:Math.sin(time*10+(1-i)*Math.PI)*Math.min(speed*.05,.4));
+  if(speed>.2&&!meditating){const angle=Math.atan2(-simulation.player.velocity.x,-simulation.player.velocity.z);avatar.group.rotation.y+=Math.atan2(Math.sin(angle-avatar.group.rotation.y),Math.cos(angle-avatar.group.rotation.y))*Math.min(dt*12,1);}
+  avatar.legs.forEach((leg,i)=>leg.rotation.x=meditating?1.25:Math.sin(time*10+i*Math.PI)*Math.min(speed*.07,.55));
+  avatar.arms.forEach((arm,i)=>arm.rotation.x=simulation.hook||projectile?-2.1:meditating?1.0:Math.sin(time*10+(1-i)*Math.PI)*Math.min(speed*.05,.4));
   avatar.aura.rotation.z=time*.4;
   for(const item of world.dynamicObjects){const body=simulation.bodies.get(item.id),object=world.objects.get(item.id);if(body&&object){object.position.copy(body.position);object.quaternion.copy(body.quaternion);}}
   if(simulation.hook&&p.y>3&&speed>1)swingComplete=true;
@@ -427,12 +458,15 @@ function frame() {
     if(event.type==='actor-escaped')toast('The rival broke free. Reinforce your tether or act before they escape.');
     if(event.type==='escaped')toast('You broke free of the tether.');
     combatView.event(event,simulation);
+    summoningView.event(event);
+    if(event.type==='opponent-reeled'){pitch=.2;toast('Opponent in reach. Select your sword and attack four times.');}
     if(event.type==='combat-message')toast(event.message);
     if(event.type==='hook-failed')toast(event.reason);
   }
   world.updatePractice?.(simulation.getSnapshot(),time,creation);
   updateCamera(dt);updateRope(time);world.update(time,dt);
   combatView.update(simulation.getSnapshot(),creation,dt,time);
+  summoningView.update(meditating,dt,time);
   renderer.render(scene,camera);
   if(meditating&&previewRenderer&&!$('clay-dialog').open){previewHook.group.rotation.y=Math.sin(time*.5)*.6+.25;previewHook.group.rotation.z=.18;previewRenderer.render(previewScene,previewCamera);}
   if(Math.floor(time*10)!==frame.lastHUD){frame.lastHUD=Math.floor(time*10);updateHUD();drawMiniMap();}
@@ -440,14 +474,16 @@ function frame() {
 
 function init() {
   const canvas=$('game-canvas');canvas.tabIndex=0;
-  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.75));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer=new THREE.WebGLRenderer({canvas,antialias:navigator.maxTouchPoints===0,alpha:false,powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,navigator.maxTouchPoints?1:1.75));renderer.shadowMap.enabled=navigator.maxTouchPoints===0;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.13;
-  world=createWorld();scene=world.scene;simulation=new SourceSimulation({obstacles:world.obstacles,dynamicObjects:world.dynamicObjects,actors:world.actors});
+  world=createWorld();scene=world.scene;simulation=new SourceSimulation({obstacles:world.obstacles,dynamicObjects:world.dynamicObjects,actors:world.actors,loadout:loadedSlots.slots});
   const restored=loadSession(storage);
   if(restored){restoreSession(simulation,restored);lastSafePosition=[...restored.position];hookCount=restored.objectives.hookCount;swingComplete=restored.objectives.swingComplete;pullComplete=restored.objectives.pullComplete;}
+  simulation.meditating=true;
+  meditating=!simulation.inCombat;simulation.meditating=meditating;document.body.classList.toggle('meditating',meditating);
   controls=new Controls(canvas);camera=new THREE.PerspectiveCamera(57,1,.1,450);
-  avatar=createAvatar();scene.add(avatar.group);combatView=createCombatView(avatar,scene,camera);hook=createHook(creation);hook.group.visible=false;scene.add(hook.group);
+  avatar=createAvatar();scene.add(avatar.group);combatView=createCombatView(avatar,scene,camera);summoningView=createSummoningView(avatar);hook=createHook(creation);hook.group.visible=false;scene.add(hook.group);
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(ropePositions,3));
   rope=new THREE.Line(geometry,new THREE.LineBasicMaterial({color:creation.color,transparent:true,opacity:.95}));rope.visible=false;scene.add(rope);
   previewRenderer=new THREE.WebGLRenderer({canvas:$('creation-preview'),antialias:true,alpha:true});previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));previewRenderer.outputColorSpace=THREE.SRGBColorSpace;previewRenderer.toneMapping=THREE.ACESFilmicToneMapping;
@@ -465,12 +501,22 @@ function init() {
   $('spike-toggle').onclick=()=>simulation.combat.toggleAura();
   $('equip-toggle').onclick=cycleEquipment;
   $('manifest-solid').onclick=manifestSolid;
-  practiceUI=createPracticeUI({simulation,startPractice,resetPractice:()=>{projectile=null;simulation.resetPractice();toast('Practice characters reset.');},storage,toast});
+  loadoutUI=initLoadoutUI({simulation,storage,getCreation:()=>creation,onChange:next=>{creation=normalizeCreation(next);applyCreation();queueAutoSave();},onSelect:selectSlot,toast});
+  $('practice-menu-toggle').onclick=()=>document.body.classList.toggle('practice-open');
+  const preferencesKey='the-source.controls.v1';
+  try{const p=JSON.parse(storage.getItem(preferencesKey));if(p){$('touch-scale').value=p.scale||1;$('touch-layout').value=p.layout||'right';$('graphics-quality').value=p.quality||'balanced';}}catch{}
+  function preferences(){
+    document.body.style.setProperty('--touch-scale',$('touch-scale').value);document.body.classList.toggle('touch-left',$('touch-layout').value==='left');
+    const phone=$('graphics-quality').value==='performance'||controls.touchEnabled;renderer.setPixelRatio(Math.min(devicePixelRatio,phone?1:1.75));renderer.shadowMap.enabled=!phone;
+    try{storage.setItem(preferencesKey,JSON.stringify({scale:Number($('touch-scale').value),layout:$('touch-layout').value,quality:$('graphics-quality').value}));}catch{toast('Control settings could not be saved.');}
+  }
+  ['touch-scale','touch-layout','graphics-quality'].forEach(id=>$(id).addEventListener('input',preferences));preferences();
+  practiceUI=createPracticeUI({simulation,startPractice,resetPractice:()=>{if(!simulation.resetPractice()){toast('Disengage before resetting practice.');return;}projectile=null;toast('Practice characters reset.');},storage,toast});
   $('workshop').addEventListener('input',queueAutoSave);
   document.querySelectorAll('[data-color]').forEach(button=>button.addEventListener('click',queueAutoSave));
   $('enter-ground').addEventListener('click',()=>setMeditation(false));
   $('meditate-toggle').addEventListener('click',()=>setMeditation(!meditating));
-  $('reset-player').addEventListener('click',()=>{projectile=null;simulation.reset();yaw=-.18;pitch=.28;toast('Returned to the circle.');});
+  $('reset-player').addEventListener('click',()=>{if(!simulation.reset()){toast('Disengage before returning to the circle.');return;}projectile=null;yaw=-.18;pitch=.28;toast('Returned to the circle.');});
   $('guide-toggle').addEventListener('click',()=>{$('guide-dialog').showModal();controls.clear();});
   $('guide-close').addEventListener('click',()=>$('guide-dialog').close());
   $('minimap').addEventListener('click',toggleMap);
@@ -480,16 +526,17 @@ function init() {
   $('minimap').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();toggleMap();}});
   $('minimap').setAttribute('title','Expand map · G / controller View');
   window.addEventListener('resize',resize);
-  window.addEventListener('blur',()=>{if(!meditating)setMeditation(true);save(false);});
+  window.addEventListener('blur',()=>{controls.clear();save(false);});
   window.addEventListener('pagehide',()=>save(false));
   document.addEventListener('visibilitychange',()=>{if(document.hidden)save(false);});
   setInterval(checkpoint,3000);
   canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();$('error-state').hidden=false;$('error-state').textContent='The graphics connection was interrupted. Reload to return to your saved creation.';});
   applyCreation();resize();updateCamera(1);updateHUD();drawMiniMap();
-  $('meditate-toggle').textContent='Return to ground';
+  $('meditate-toggle').textContent=meditating?'Return to ground':'Meditate';
+  if(!meditating)simulation.selectSlot(0);
   if(!saved)queueAutoSave();
   $('loading-state').hidden=true;
-  if(import.meta.env.DEV)window.__SOURCE_DEBUG__={snapshot:()=>({...simulation.getSnapshot(),meditating,creation:{...creation},saved,dirty,lastSavedAt,device:controls.device,renderer:{calls:renderer.info.render.calls,triangles:renderer.info.render.triangles},camera:{yaw,pitch},objectives:{hookCount,swingComplete,pullComplete}}),simulation,world,setMeditation,aimAt,cast,release,checkpoint,startPractice};
+  if(import.meta.env.DEV)window.__SOURCE_DEBUG__={snapshot:()=>({...simulation.getSnapshot(),meditating,creation:{...creation},saved,dirty,lastSavedAt,device:controls.device,renderer:{calls:renderer.info.render.calls,triangles:renderer.info.render.triangles},camera:{yaw,pitch},objectives:{hookCount,swingComplete,pullComplete}}),simulation,world,setMeditation,aimAt,cast,release,checkpoint,startPractice,selectSlot,visuals:()=>({orb:summoningView.visible(),aura:combatView.auraVisible()})};
   frame();
 }
 

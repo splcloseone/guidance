@@ -13,7 +13,7 @@ const advance = (sim, seconds, input = {}) => {
 const catchActor = (sim, id = 'practice-rival') => sim.attach(id, sim.actors.get(id).body.position.toArray());
 const tap = sim => { sim.step(1 / 60, { struggle: true }); advance(sim, 0.12, { struggle: false }); };
 
-test('moving practice characters are physical targets and tether reaction moves both bodies', () => {
+test('combat hooks pull the opponent toward the caster and preserve release momentum', () => {
   const sim = make();
   sim.startPractice('rival');
   advance(sim, 1);
@@ -24,7 +24,7 @@ test('moving practice characters are physical targets and tether reaction moves 
   const playerZ = sim.player.position.z;
   advance(sim, 0.6, { reel: 1 });
   assert.ok(actor.body.position.z > targetZ + 0.7, 'captured rival must actually be pulled');
-  assert.ok(sim.player.position.z < playerZ - 0.7, 'equal reaction must pull the caster too');
+  assert.ok(Math.abs(sim.player.position.z-playerZ)<.15, 'combat pull should bring the opponent to the caster');
   assert.equal(sim.getSnapshot().actors.find(a => a.id === actor.id).caught, true);
   assert.ok(sim.anchorPosition().almostEquals(actor.body.pointToWorldFrame(sim.hook.localPoint)));
   const velocity = actor.body.velocity.clone();
@@ -98,11 +98,11 @@ test('a rival gradually struggles free, and a reinforced tether takes longer to 
     let time = 0;
     while (sim.hook && time < 15) { advance(sim, 0.1); time += 0.1; }
     assert.equal(sim.hook, null);
-    assert.ok(time > 6, `escape must require effort, got ${time}s`);
+    assert.ok(time > 2 && time < 6, `escape should be easier but deliberate, got ${time}s`);
     assert.ok(sim.events.some(e => e.type === 'actor-escaped'));
     durations.push(time);
   }
-  assert.ok(durations[1] > durations[0] + 2);
+  assert.ok(durations[1] > durations[0] + .5);
 });
 
 test('shape thickness changes actual tether force, costs, and escape effort beyond the strength slider cap', () => {
@@ -127,8 +127,8 @@ test('shape thickness changes actual tether force, costs, and escape effort beyo
   }
   assert.equal(results[1].activation, 15.8, 'standard thickness retains the original activation cost');
   assert.equal(results[1].upkeep, 1.6, 'standard thickness retains the original upkeep');
-  assert.equal(results[1].requiredPresses, 25);
-  assert.ok(results[2].requiredPresses > 25, 'thicker shapes still reinforce maximum-strength designs');
+  assert.equal(results[1].requiredPresses, 8);
+  assert.ok(results[2].requiredPresses > 8, 'thicker shapes still reinforce maximum-strength designs');
   for (const field of ['activation', 'upkeep', 'requiredPresses', 'tension', 'speed']) {
     assert.ok(results[0][field] < results[1][field] && results[1][field] < results[2][field], `${field} must increase with actual thickness`);
   }
@@ -166,7 +166,7 @@ test('breakout requires deliberate repeated presses; holding and impossible tap 
   let presses = 0;
   while (sim.incomingTether && presses < 40) { tap(sim); presses++; }
   assert.equal(sim.incomingTether, null);
-  assert.ok(presses > 15, 'escape must require sustained effort');
+  assert.ok(presses > 0 && presses <= 7, 'the remaining escape should take only a few deliberate taps');
   assert.equal(sim.practice.status, 'escaped');
 });
 

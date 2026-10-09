@@ -15,7 +15,7 @@ test('aura is deliberate, costs activation plus upkeep, coexists with tether, an
  s.source=.01;advance(s,.05);assert.equal(s.hook,null);assert.equal(s.combat.spiking,false);assert.ok(s.getSnapshot().weakened);
  assert.equal(s.combat.toggleAura(),false);advance(s,.2,{meditating:true});assert.equal(s.combat.toggleAura(),false);
 });
-test('physical sword hits once only in active phase and combo inputs queue only during recovery',()=>{
+test('physical sword hits once only in active phase and a deliberate input queues the next strike',()=>{
  const s=make();ready(s);const rival=s.actors.get('practice-rival');const reserve=s.source;
  s.combat.attack([0,0,-1]);advance(s,.1);assert.equal(rival.health,100);
  advance(s,.3);assert.equal(rival.health,80);advance(s,.08);assert.equal(rival.health,80);
@@ -31,13 +31,14 @@ test('misses, facing away, ally targets, distance and intervening walls prevent 
 test('spiking reinforces actual hits and mitigates incoming melee, not fall damage',()=>{
  const s=make();ready(s);s.combat.toggleAura();s.combat.attack([0,0,-1]);advance(s,.5);assert.equal(s.actors.get('practice-rival').health,70);
  assert.equal(s.combat.damagePlayer(20),14);assert.equal(s.combat.damagePlayer(20,'fall'),20);
- advance(s,.1,{meditating:true});assert.equal(s.combat.spiking,false);assert.equal(s.combat.strike,null);
+ advance(s,.1,{meditating:true});assert.equal(s.meditating,false);assert.equal(s.combat.spiking,true);
+ s.player.position.x+=10;advance(s,9);advance(s,.1,{meditating:true});assert.equal(s.combat.spiking,false);assert.equal(s.combat.strike,null);
 });
 test('practice counters are telegraphed, dodgeable, and unavailable outside melee practice',()=>{
  const s=make();ready(s);s.combat.counterAt=0;advance(s,.1);assert.ok(s.combat.counterWindup>s.elapsed);assert.equal(s.health,100);
  s.player.position.x+=5;advance(s,1);assert.equal(s.health,100);
  s.player.position.set(-7,.6,7.1);s.combat.counterAt=0;advance(s,1);assert.equal(s.health,88);
- s.resetPractice();advance(s,5);assert.equal(s.health,88);
+ assert.equal(s.resetPractice(),false);s.player.position.x+=10;advance(s,9);assert.equal(s.resetPractice(),true);advance(s,5);assert.equal(s.health,88);
 });
 test('solid clay survives saves, keeps holes, and generates finite geometry',()=>{
  const solid=clayPreset('pants');const f=decodeClay(solid.data),N=28;
@@ -53,10 +54,15 @@ test('add, carve, pull, smooth and flatten change real solid density; corrupted 
  }
  assert.deepEqual(normalizeClay({data:'broken'}),ball);
 });
-test('armor and created swords have real costs, combat purpose, and lifecycle dismissal',()=>{
- const s=make();ready(s);s.setCreation({form:'clay',solid:clayPreset('pants')});assert.equal(s.combat.manifest(),true);assert.equal(s.source,90);assert.equal(s.combat.damagePlayer(20),15);
- s.combat.toggleAura();assert.equal(s.combat.damagePlayer(20),9);advance(s,1);assert.ok(s.source<83);
- s.setCreation({form:'clay',solid:clayPreset('sword')});assert.equal(s.combat.wearing,false);assert.equal(s.combat.manifest(),true);assert.equal(s.combat.weapon,'source-sword');
- advance(s,.1,{meditating:true});assert.equal(s.combat.manifested,false);assert.notEqual(s.combat.weapon,'source-sword');
- s.setCreation({form:'clay',solid:{...clayPreset('sword'),data:'00'.repeat(28**3)}});assert.equal(s.combat.manifest(),false);
+test('prepared armor and created swords coexist, pay separate upkeep and dismiss on exhaustion',()=>{
+ const s=make();ready(s);
+ const armor=normalizeCreation({id:'armor',form:'clay',solid:clayPreset('pants')});
+ const sword=normalizeCreation({id:'sword',form:'clay',solid:clayPreset('sword')});
+ assert.equal(s.combat.manifest(armor),true);assert.equal(s.source,90);assert.equal(s.combat.damagePlayer(20),15);
+ s.combat.toggleAura();assert.equal(s.combat.damagePlayer(20),9);
+ assert.equal(s.combat.manifest(sword),true);assert.equal(s.combat.wearing,true);assert.equal(s.combat.weapon,'source-sword');
+ const source=s.source;advance(s,.5);assert.ok(Math.abs(s.source-(source-2))<.001);
+ advance(s,.1,{meditating:true});assert.equal(s.meditating,false);
+ s.source=.001;advance(s,.1);assert.equal(s.combat.manifested,false);assert.equal(s.combat.wearing,false);assert.notEqual(s.combat.weapon,'source-sword');
+ s.source=100;assert.equal(s.combat.manifest({...sword,solid:{...sword.solid,data:'00'.repeat(28**3)}}),false);
 });

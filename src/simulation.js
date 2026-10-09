@@ -1,3 +1,4 @@
+import { defaultLoadout, normalizeLoadout } from './loadout.js';
 import { Combat } from './combat.js';
 import * as CANNON from 'cannon-es';
 import { createActor, resetActor, actorSnapshot, escapeThreshold, STRUGGLE_RULES } from './actors.js';
@@ -10,9 +11,14 @@ const SPAWN = [0, 1.2, 15];
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 
+export function tetherCosts(definition) {
+  const reinforcement = definition.strength * Math.sqrt(definition.shape.thickness / .055);
+  return { reinforcement, activation: 8 + definition.reach * .1 + reinforcement, upkeep: .5 + reinforcement * .22 };
+}
+
 /** A deterministic local physics lab. Rendering and input mapping live outside it. */
 export class SourceSimulation {
-  constructor({ obstacles = [], dynamicObjects = [], actors = [] } = {}) {
+  constructor({ obstacles = [], dynamicObjects = [], actors = [], loadout } = {}) {
     this.world = new CANNON.World({ gravity: new CANNON.Vec3(0, -20, 0) });
     this.world.allowSleep = false;
     this.world.solver.iterations = 16;
@@ -47,6 +53,10 @@ export class SourceSimulation {
     this._impactSpeed = 0;
     this._exhausted = false;
     this.combat = new Combat(this);
+    this.combatUntil = 0;
+    this.loadout = loadout ? normalizeLoadout(loadout) : defaultLoadout();
+    this.selectedSlot = 0;
+    this.tetherCreation = this.creation;
 
     const floorMaterial = new CANNON.Material('world');
     const playerMaterial = new CANNON.Material('player');
@@ -105,30 +115,61 @@ export class SourceSimulation {
   }
 
   setCreation(settings = {}) {
-    this.combat.dismiss();
+    if (this.inCombat) return normalizeCreation(this.creation);
     this.creation = normalizeCreation({ ...this.creation, ...settings,
       shape: { ...this.creation.shape, ...settings?.shape } });
+    this.tetherCreation = this.creation;
     return normalizeCreation(this.creation);
   }
 
-  get reinforcement() {
-    // The standard .055 thickness preserves the original force and reserve costs.
-    // A square-root curve rewards thicker shaping without making thin forms unusable.
-    return this.creation.strength * Math.sqrt(this.creation.shape.thickness / 0.055);
+  get inCombat() { return this.elapsed < this.combatUntil || !!this.incomingTether || !!this.combat.strike || !!this.combat.counterWindup || this.actors.get(this.hook?.bodyId)?.role === 'rival'; }
+  get combatRemaining() { return this.inCombat ? Math.max(this.incomingTether || this.actors.get(this.hook?.bodyId)?.role === 'rival' ? 8 : .1, this.combatUntil - this.elapsed) : 0; }
+  markCombat() { this.combatUntil = this.elapsed + 8; }
+  setMeditation(value) {
+    if (value && this.inCombat) return false;
+    this.meditating = !!value;
+    if(value) { this.release('meditation'); this.combat.reset(); }
+    return true;
+  }
+  setLoadout(slots) {
+    if (!this.meditating || this.inCombat) return false;
+    this.loadout = normalizeLoadout(slots); return true;
+  }
+  selectSlot(index) {
+    if (this.meditating || !Number.isInteger(index) || index < 0 || index > 3 || this.combat.strike) return false;
+    const slot = this.loadout[index];
+    if(slot.kind === 'empty') return false;
+    let ok;
+    if(slot.kind === 'physical' || slot.kind === 'fists') ok = this.combat.equip(slot.kind === 'physical' ? 'sword' : 'fists');
+    else if(['hook','lasso','claw'].includes(slot.creation.form)) {
+      this.tetherCreation = normalizeCreation(slot.creation); ok = this.combat.equip('tether');
+    } else ok = this.combat.manifest(slot.creation);
+    if(ok) this.selectedSlot = index;
+    return !!ok;
+  }
+  dismissSlot(index = this.selectedSlot) {
+    const slot = this.loadout[index];
+    if(slot?.kind === 'creation') {
+      if(slot.creation.solid?.purpose === 'armor' && this.combat.armorDefinition?.id === slot.creation.id) this.combat.dismiss('armor');
+      else if(slot.creation.solid?.purpose === 'sword' && this.combat.weaponDefinition?.id === slot.creation.id) this.combat.dismiss('sword');
+      else if(this.hook?.definition.id === slot.creation.id) this.release();
+    } else if(index === this.selectedSlot) this.combat.equip('fists');
+  }
+  toggleReel(direction=1) {
+    if(!this.hook) return false;
+    if(this.hook.autoReel) return false;
+    this.hook.reel = this.hook.reel === direction ? 0 : direction; return true;
   }
 
-  get activationCost() {
-    return 8 + this.creation.reach * 0.1 + this.reinforcement;
-  }
+  get reinforcement() { return tetherCosts(this.tetherCreation).reinforcement; }
+  get activationCost() { return tetherCosts(this.tetherCreation).activation; }
+  get upkeepCost() { return tetherCosts(this.tetherCreation).upkeep; }
 
-  get upkeepCost() {
-    return 0.5 + this.reinforcement * 0.22;
-  }
-
-  attach(bodyId, worldPointArray) {
+  attach(bodyId, worldPointArray, capturedDefinition = this.tetherCreation) {
+    const definition = normalizeCreation(capturedDefinition), cost = tetherCosts(definition);
     const body = this.bodies.get(bodyId);
     if (!body || !Array.isArray(worldPointArray) || worldPointArray.length !== 3 || !worldPointArray.every(Number.isFinite)) return false;
-    if (['orb','clay'].includes(this.creation.form)) {
+    if (['orb','clay'].includes(definition.form)) {
       this._event('hook-failed', { reason: 'Shape the ball into a hook or lasso before casting.' });
       return false;
     }
@@ -143,11 +184,11 @@ export class SourceSimulation {
     }
     const anchor = new CANNON.Vec3(...worldPointArray);
     const distance = anchor.distanceTo(this.player.position);
-    if (distance > this.creation.reach + 0.05) {
+    if (distance > definition.reach + 0.05) {
       this._event('hook-failed', { reason: 'Beyond your hook’s reach.' });
       return false;
     }
-    if (this.source + 1e-8 < this.activationCost) {
+    if (this.source + 1e-8 < cost.activation) {
       this._event('hook-failed', { reason: 'Not enough of the Source. Rest in meditation.' });
       return false;
     }
@@ -156,24 +197,28 @@ export class SourceSimulation {
     const half = body.shapes[0].halfExtents;
     if (Math.abs(localPoint.x) > half.x + 0.15 || Math.abs(localPoint.y) > half.y + 0.15 || Math.abs(localPoint.z) > half.z + 0.15) return false;
     if (this.hook) this.release('replaced');
-    this.source = Math.max(0, this.source - this.activationCost);
+    this.source = Math.max(0, this.source - cost.activation);
     // A character hit is often on the near face, away from their center of mass.
     // Allow a closer pull so that their whole body can reach the rescuer's footing.
     // World anchors retain the longer clearance used for swinging and climbing.
     const minLength = this.actors.has(bodyId) ? 1 : 2;
+    const hostile = this.actors.get(bodyId)?.role === 'rival';
+    if(hostile) this.markCombat();
     this.hook = {
+      definition: normalizeCreation(definition),
+      autoReel: this.inCombat, pullToCaster: hostile, reel: 0,
       bodyId,
       localPoint,
       anchor,
       length: Math.max(minLength, distance),
       minLength,
-      maxLength: this.creation.reach,
+      maxLength: definition.reach,
       tension: 0,
       distance,
-      strength: this.reinforcement,
-      requiredPresses: escapeThreshold(this.reinforcement),
-      reelSpeed: this.creation.reelSpeed,
-      upkeep: this.upkeepCost,
+      strength: cost.reinforcement,
+      requiredPresses: escapeThreshold(cost.reinforcement),
+      reelSpeed: definition.reelSpeed,
+      upkeep: cost.upkeep,
       stage: 'held',
     };
     const actor = this.actors.get(bodyId);
@@ -199,7 +244,7 @@ export class SourceSimulation {
     if (!this.hook) return false;
     const bodyId = this.hook.bodyId;
     const actor = this.actors.get(bodyId);
-    if (actor) { actor.caught = false; actor.escapeProgress = 0; }
+    if (actor) { actor.caught = false; actor.escapeProgress = 0; if(actor.role === 'rival' && !['reset','practice-start','practice-reset'].includes(reason)) this.markCombat(); }
     this.hook = null;
     // Never modify velocity here: letting go preserves the player's swing momentum.
     this._event('released', { reason, bodyId });
@@ -273,15 +318,16 @@ export class SourceSimulation {
     target.getVelocityAtWorldPoint(anchor, anchorVelocity);
     const closingSpeed = caster.velocity.vsub(anchorVelocity).dot(direction);
     const desiredClosingSpeed = clamp(Math.max(0, extension) * 0.22 / dt, 0, 30);
-    const inverseMass = caster.invMass + target.invMass;
+    const casterInverseMass = tether.pullToCaster ? 0 : caster.invMass;
+    const inverseMass = casterInverseMass + target.invMass;
     const maxForce = 2300 + tether.strength * 1350;
     const impulseMagnitude = clamp((desiredClosingSpeed - closingSpeed) / inverseMass, 0, maxForce * dt);
     if (impulseMagnitude <= 0) return;
     const impulse = direction.scale(impulseMagnitude);
-    caster.applyImpulse(impulse);
+    if(casterInverseMass) caster.applyImpulse(impulse);
     if (target.mass > 0) target.applyImpulse(impulse.negate());
     tether.tension = impulseMagnitude / dt;
-    if (extension > 0.035) {
+    if (extension > 0.035 && !tether.pullToCaster) {
       const correction = Math.min(extension - 0.015, maxForce * dt * dt * inverseMass);
       caster.position.vadd(direction.scale(correction * caster.invMass / inverseMass), caster.position);
       if (target.mass > 0) target.position.vsub(direction.scale(correction * target.invMass / inverseMass), target.position);
@@ -306,7 +352,9 @@ export class SourceSimulation {
     body.wakeUp();
   }
 
-  resetPractice() {
+  resetPractice(force = false) {
+    if(!force && this.inCombat) return false;
+    this.combatUntil = 0;
     if (this.hook && this.actors.has(this.hook.bodyId)) this.release('practice-reset');
     this._releaseIncoming('practice-reset');
     for (const actor of this.actors.values()) {
@@ -318,14 +366,16 @@ export class SourceSimulation {
     this.combat.reset();
     this.world.broadphase.dirty = true;
     this._event('practice-reset');
+    return true;
   }
 
   startPractice(mode) {
-    if (!['rival', 'rescue', 'breakout', 'melee'].includes(mode)) return false;
+    if (!['rival', 'rescue', 'breakout', 'melee', 'combo'].includes(mode)) return false;
+    if(this.inCombat) return false;
     const actorId = mode === 'rescue' ? 'practice-ally' : 'practice-rival';
     const actor = this.actors.get(actorId);
     if (!actor) return false;
-    this.resetPractice();
+    this.resetPractice(true);
     this.release('practice-start');
     this.meditating = false;
     this.practice = { mode, status: 'active', startedAt: this.elapsed };
@@ -343,8 +393,10 @@ export class SourceSimulation {
       actor.body.interpolatedPosition.copy(actor.body.position);
       actor.body.aabbNeedsUpdate = true;
     }
-    if (mode === 'melee') { this.combat.equip('sword'); this.combat.counterAt = this.elapsed + 3; }
+    if (mode === 'combo') { this.combat.equip('tether'); this.combat.counterAt = this.elapsed + 5; }
+    if (mode === 'melee') { const slot=this.loadout.findIndex(s=>s.kind==='physical'); if(slot>=0)this.selectedSlot=slot; this.combat.equip('sword'); this.combat.counterAt = this.elapsed + 3; }
     if (mode === 'breakout') {
+      this.markCombat();
       this.incomingTether = {
         actorId: actor.id, length: 6, tension: 0, strength: this.reinforcement,
         escapeProgress: 0, acceptedPresses: 0, lastPressAt: -Infinity,
@@ -419,6 +471,7 @@ export class SourceSimulation {
     actor.health = Math.max(0, actor.health - damage);
     actor.lastDamageAt = this.elapsed;
     actor.slamArmedUntil = 0;
+    this.markCombat();
     this._event('actor-damaged', { actorId: actor.id, damage, health: actor.health, speed, surfaceId: other.userData?.id });
     if (actor.health <= 0) {
       if (this.hook?.bodyId === actor.id) this.release('defeated');
@@ -445,7 +498,7 @@ export class SourceSimulation {
         }
       }
       let targetX = 0;
-      if (actor.role === 'rival' && !['breakout', 'melee'].includes(this.practice.mode)) targetX = Math.cos((this.elapsed - this.practice.startedAt) * 0.65) * 1.3;
+      if (actor.role === 'rival' && !['breakout', 'melee', 'combo'].includes(this.practice.mode)) targetX = Math.cos((this.elapsed - this.practice.startedAt) * 0.65) * 1.3;
       if (actor.role === 'ally' && this.practice.mode === 'rescue' && !actor.rescued && this.elapsed - this.practice.startedAt > 2.5) targetX = -1.3;
       if (actor.grounded) {
         const maxChange = (captured ? 3 : 10) * dt;
@@ -498,7 +551,7 @@ export class SourceSimulation {
   step(dt, input = {}) {
     if (!Number.isFinite(dt) || dt <= 0) return;
     const frameDt = Math.min(dt, 0.1);
-    this.meditating = !!input.meditating;
+    this.meditating = !!input.meditating && !this.inCombat;
     if (this.meditating) { this.release('meditation'); this._releaseIncoming('meditation'); }
     const struggleDown = !!input.struggle;
     if (struggleDown && !this._struggleWasDown) this._struggle();
@@ -515,7 +568,16 @@ export class SourceSimulation {
         this.health = Math.min(100, this.health + 3 * FIXED_STEP);
       }
       if (this.hook) {
-        const reel = clamp(finite(input.reel), -1, 1);
+        const body = this.bodies.get(this.hook.bodyId);
+        if(this.hook.autoReel && this.hook.pullToCaster && body.position.distanceTo(this.player.position) < 1.85) {
+          this.hook.autoReel = false; this.hook.reel = 0; this.hook.length = Math.max(1.5, this.hook.length);
+          // Brake the completed magical pull instead of driving the target through the caster.
+          const outward=body.position.vsub(this.player.position);outward.y=0;outward.normalize();
+          const closing=body.velocity.vsub(this.player.velocity).dot(outward);
+          if(closing<0)body.velocity.vsub(outward.scale(closing),body.velocity);
+          this._event('opponent-reeled');
+        }
+        const reel = this.hook.autoReel ? 1 : clamp(finite(input.reel) || this.hook.reel, -1, 1);
         this.hook.length = clamp(this.hook.length - reel * this.hook.reelSpeed * FIXED_STEP, this.hook.minLength, this.hook.maxLength);
         const drain = this.hook.upkeep + (reel > 0 ? 0.65 : 0);
         this.source = Math.max(0, this.source - drain * FIXED_STEP);
@@ -553,7 +615,7 @@ export class SourceSimulation {
         this._impactSpeed = 0;
       }
       if (this.player.position.y < -15 || this.health <= 0 || !Number.isFinite(this.player.position.x)) {
-        this.reset();
+        this.reset(true);
         break;
       }
     }
@@ -561,9 +623,11 @@ export class SourceSimulation {
     this._jumpQueued = false;
   }
 
-  reset() {
+  reset(force = false) {
+    if(!force && this.inCombat) return false;
+    this.combatUntil = 0;
     this.release('reset');
-    this.resetPractice();
+    this.resetPractice(true);
     for (const [id, body] of this.bodies) {
       const initial = this.initialStates.get(id);
       body.position.copy(initial.position);
@@ -596,12 +660,14 @@ export class SourceSimulation {
     this._jumpGrace = 0;
     this._exhausted = false;
     this._event('reset');
+    return true;
   }
 
   getSnapshot() {
     const anchor = this.anchorPosition();
     return {
       combat: this.combat.snapshot(),
+      inCombat: this.inCombat, combatRemaining: this.combatRemaining, selectedSlot: this.selectedSlot,
       practice: { ...this.practice },
       actors: [...this.actors.values()].map(actor => ({ ...actorSnapshot(actor), escapeProgress: actor.escapeProgress / (this.hook?.bodyId === actor.id ? this.hook.requiredPresses : escapeThreshold(this.reinforcement)) })),
       incomingTether: this.incomingTether ? {
@@ -623,6 +689,7 @@ export class SourceSimulation {
       upkeepCost: this.upkeepCost,
       hook: this.hook ? {
         bodyId: this.hook.bodyId,
+        autoReel: this.hook.autoReel, reel: this.hook.reel, definition: this.hook.definition,
         actorId: this.actors.has(this.hook.bodyId) ? this.hook.bodyId : null,
         stage: this.hook.stage,
         escapeProgress: (this.actors.get(this.hook.bodyId)?.escapeProgress || 0) / this.hook.requiredPresses,

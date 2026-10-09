@@ -4,9 +4,9 @@ export const PRACTICE_ACTORS = Object.freeze([
   { id: 'practice-ally', name: 'Practice ally', role: 'ally', position: [7, 0.92, 5], size: [0.8, 1.8, 0.7], mass: 70 },
 ]);
 
-export const STRUGGLE_RULES = Object.freeze({ minimumInterval: 0.11, decayPerSecond: 0.65, rivalInterval: 0.29, rivalDelay: 1.6 });
+export const STRUGGLE_RULES = Object.freeze({ minimumInterval: 0.11, decayPerSecond: 0.2, rivalInterval: 0.29, rivalDelay: 1.6 });
 // Reinforcement may exceed the workshop's strength slider when the shape is thicker.
-export const escapeThreshold = reinforcement => Math.ceil(15 + Math.min(10, Math.max(0.5, Number(reinforcement) || 3)) * 2);
+export const escapeThreshold = reinforcement => Math.ceil(4 + Math.min(10, Math.max(0.5, Number(reinforcement) || 3)) * .65);
 
 export function createActor(descriptor, body) {
   return {
