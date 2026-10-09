@@ -48,6 +48,7 @@ export function createCombatView(avatar, scene, camera) {
   }
   function update(snapshot,creation,dt,time){
     const c=snapshot.combat;
+    avatar.aura.material.color.set(c.spiking?'#ffffff':creation.color);
     aura.visible=c.spiking;fists.forEach(f=>f.visible=c.spiking);coating.visible=c.spiking;
     if(c.spiking&&!wasSpiking)pulseAge=0;wasSpiking=c.spiking;pulseAge+=dt;
     pulse.visible=pulseAge<.65;pulse.scale.setScalar(1+pulseAge*3);pulse.material.opacity=Math.max(0,1-pulseAge/.65);
@@ -60,7 +61,7 @@ export function createCombatView(avatar, scene, camera) {
     }
     if(solid){
       solid.group.visible=c.wearing||(c.manifested&&c.weapon==='source-sword');
-      solid.material.emissive.set(c.spiking?'#ffffff':creation.color);solid.material.emissiveIntensity=c.spiking?.8:.34;
+      solid.material.emissive.set(c.spiking?'#ffffff':creation.color);solid.material.emissiveIntensity=c.spiking ? .8 : .34;
       const mesh=solid.group.children[0], pos=mesh.geometry.attributes.position;
       if(c.wearing){
         avatar.group.add(solid.group);solid.group.position.set(0,.36,0);solid.group.scale.set(.57,.43,.57);solid.group.rotation.set(0,0,0);

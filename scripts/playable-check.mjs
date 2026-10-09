@@ -50,10 +50,20 @@ try {
   await page.reload();
   await page.waitForFunction(() => document.getElementById('loading-state').hidden);
   assert.equal(await page.locator('#creation-name').inputValue(), 'Offline Voyager');
+  await context.setOffline(true);
+  await page.locator('#open-clay').click();await page.locator('#clay-pants').click();
+  await page.locator('#clay-close').click();await page.locator('#save-creation').click();
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('the-source.creation.v1'))?.solid?.purpose==='armor');
+  await page.locator('#enter-ground').click();await page.locator('#practice-melee').click();
+  await page.keyboard.press('KeyN');await page.keyboard.press('KeyC');
+  await page.waitForFunction(()=>document.getElementById('combat-status').textContent.includes('WHITE AURA')&&document.getElementById('combat-status').textContent.includes('armor active'));
+  await page.locator('#game-canvas').click({position:{x:640,y:520}});
+  await page.waitForFunction(()=>Number(document.getElementById('target-health').value)<100);
+  await page.waitForSelector('.damage-number');
   await page.screenshot({ path: resolve(out, 'offline-play.png') });
   assert.deepEqual(errors, []);
   assert(network.every(url => url === address), 'Standalone file must not request any other assets');
-  const result = { passed: true, playableFile, playablePath, mode: 'standalone HTML loaded from isolated local server; offline gameplay', directFileNavigation: 'not tested: cloud browser policy blocks file URLs', pixels, autosaveReload: true, keyboardMovement: true, guide: true, errors, requestedAssets: network.filter(url=>url!==address) };
+  const result = { passed: true, playableFile, playablePath, mode: 'standalone HTML loaded from isolated local server; offline gameplay', directFileNavigation: 'not tested: cloud browser policy blocks file URLs', pixels, autosaveReload: true, offlineClayArmorAndSwordDamage: true, keyboardMovement: true, guide: true, errors, requestedAssets: network.filter(url=>url!==address) };
   await writeFile(resolve(out, 'report.json'), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }

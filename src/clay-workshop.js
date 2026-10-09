@@ -6,7 +6,7 @@ import { createHook } from './models.js';
 /** Solid sculpting editor; each edit flows through the normal design autosave. */
 export function initClayWorkshop({ getCreation, onChange, toast }) {
   const $=id=>document.getElementById(id), dialog=$('clay-dialog'), canvas=$('clay-canvas');
-  let renderer,scene,camera,model,ghost,drag=null;
+  let renderer,scene,camera,model,ghost,drag=null,historyId=null;
   const undo=[],redo=[],ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
   function render() {
     if(!renderer || !dialog.open)return;
@@ -40,6 +40,7 @@ export function initClayWorkshop({ getCreation, onChange, toast }) {
   }
   function open() {
     if(getCreation().form!=='clay') onChange({...creationFromPreset('orb'),form:'clay',name:'Clay of the Source',solid:clayPreset()});
+    if(historyId!==getCreation().id){undo.length=0;redo.length=0;historyId=getCreation().id;}
     dialog.showModal();if(!renderer)initialize();sync();$('clay-close').focus();
   }
   $('open-clay').onclick=open;

@@ -1,25 +1,64 @@
 # The Source — continuation checkpoint
 
-Updated 2026-10-09. Read README.md, AGENTS.md, docs/ARCHITECTURE.md, and
-DESIGN.md before continuing. Prototype 0.2.1 is published and ready for player
-feedback. Preserve the release and test evidence below when extending it.
+Updated 2026-10-09. Read README.md, AGENTS.md, docs/ARCHITECTURE.md and DESIGN.md
+before continuing. Preserve the earlier release evidence below.
 
-## 0.3 work checkpoint (not yet published)
+## 0.3 — solid clay, white aura and sword combat
 
-Implemented white aura spiking, physical sword and fists, three timed sword
-strikes, damage numbers, telegraphed practice counters, keyboard/controller
-controls, and solid clay lab. Clay supports pull/add/carve/smooth/flatten,
-optional symmetry and fitting guide, editable pants/sword guides, 24-step
-undo/redo, autosave/library, and explicit armor/sword purposes in the world.
-Current verification: all 54 Node tests pass; initial production build succeeds.
-Browser validation and publication remain in progress. Do not claim 0.3 is live
-until the release evidence below is updated. The first browser test exposed an
-assertion reading before a queued input was processed; tests now wait for the
-observable result, as the existing controller tests do.
+Implementation is committed on source-prototype (initial commit 41c0efa).
+Release packaging verification and public publication are being completed.
+Until the release record below changes, 0.2.1 remains the last verified public build.
 
-Limits: 28³ solid field; fixed combat stats rather than shape-derived properties;
-forward melee hit volume rather than exact blade mesh collision; basic procedural
-animation and armor deformation; local practice only. UI calls out these limits.
+Implemented:
+
+- Deliberate white aura spiking: 5 activation, 2/sec upkeep, 1.5× melee damage,
+  30% melee protection. Compatible with active tethers; exhaustion dismisses it.
+- Physical sword and fists, stamina costs, three timed sword strikes, recovery
+  input queue, one hit per target per swing, range/facing/height/solid obstruction
+  checks. Animated shoulders, torso and legs, white weapon coating/trail, audio.
+- Actual outgoing/incoming damage numbers, including tether slams. A new melee
+  scenario has a rival with a visible, dodgeable counter windup.
+- Solid clay lab: one ball, pull/add/carve/smooth/flatten brushes, optional mirrored
+  editing and fitting outline, editable pants/sword guides, 24-step undo/redo.
+  Undo history is isolated per design identity. Controller brush/rotation tools.
+- Saved solids have explicit armor or sword purpose. Armor provides 25% melee
+  protection, follows leg animation and stacks with aura for 55% total reduction.
+  Solid swords use melee combat. Either manifestation costs 10 activation + 1/sec.
+  Meditation/exhaustion/reset dismiss active manifestations; saved definitions stay.
+- Existing active/library storage keys and v2 records preserved with optional
+  clay data. Autosave, library capacity handling and old tether tools remain.
+- Keyboard/controller mappings and in-game guide updated. D-pad down now cycles
+  equipment; keyboard 4/button still resets practice. Controller B spikes in the
+  field and closes menus. LT+X manifests; LT+D-pad left starts sword practice.
+
+Verification completed:
+
+- All 54 Node tests pass, including the new combat, solid geometry and save tests.
+- New combatClay browser suite passes pointer sculpting, controller brush use,
+  undo/redo, saved pants reload, armor, physical sword hits, reinforced outgoing
+  and protected incoming damage numbers, controller combat and manifested sword.
+- Existing practice suite passes physical catches, slams, rescue and repeated
+  controller breakout. Creation regression and controller menu/movement suite pass.
+- Production packaging builds successfully; Vite's >500kB advisory is expected.
+- Standalone release passes at /guidance/: rendered pixels, movement, guide,
+  autosave/reload, offline clay armor, sword damage, no extra assets/browser errors.
+  Final ZIP integrity and HTML equality pass. Public delivery remains pending.
+
+The first new browser run read an input result before its queued frame executed;
+the test now waits for observed state, matching existing controller tests. No
+browser errors were reported by completed suites. Physical controllers are still
+untested; controller automation uses the browser Gamepad API.
+
+Deliberate limits: 28³ bounded solid field, no volume conservation or arbitrary
+creature generation; fixed armor/weapon stats, not shape-derived sharpness or
+coverage; forward melee hit volume rather than exact blade mesh collision; basic
+procedural animation and leg deformation, not cloth simulation. Sculpture purpose
+is preview/save only. No multiplayer/parrying/guard system yet. Do not describe
+the clay lab as a finished unrestricted modeler.
+
+Next: let the user test solid shaping, sword feel, aura and damage feedback before
+expanding the creation behaviors. The code, README and architecture document the
+extension points. No dependency or environment configuration changes were needed.
 
 ## Ball-shaping fix (0.2.1, published)
 

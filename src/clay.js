@@ -60,4 +60,4 @@ export function sculptClay(solid, { point=[0,0,.5], delta=[0,0,0], radius=.25, t
   }
   return {...normalized,data:encodeClay(next)};
 }
-export function clayHasVolume(solid) { return decodeClay(solid?.data).some(v=>v>140); }
+export function clayHasVolume(solid) { const f=decodeClay(solid?.data); return f.some(v=>v>140) && f.some(v=>v<128); }

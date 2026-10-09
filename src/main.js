@@ -87,6 +87,7 @@ function applyCreation() {
   if (previewHook) { previewHook.material.color.set(creation.color); previewHook.material.emissive.set(creation.color); previewHook.group.scale.setScalar(creation.hookSize * 1.25); }
   if (rope) rope.material.color.set(creation.color);
   if (avatar) avatar.aura.material.color.set(creation.color);
+  $('creation-preview').setAttribute('aria-label',`Preview of ${creation.name}`);
   workshop?.sync(creation);
   setStatus();
 }
