@@ -5,9 +5,16 @@ before continuing. Preserve the earlier release evidence below.
 
 ## 0.3 — solid clay, white aura and sword combat
 
-Implementation is committed on source-prototype (initial commit 41c0efa).
-Release packaging verification and public publication are being completed.
-Until the release record below changes, 0.2.1 remains the last verified public build.
+Prototype **0.3.0 is published and verified**:
+https://splcloseone.github.io/guidance/?v=0.3.0
+
+Source implementation: b8675fe (initial feature commit 41c0efa).
+GitHub Pages reports built for 894c7cf0f5e5272b3ba7149ee04b1c37e391141e.
+A TLS-verified HTTPS fetch matches the tested standalone HTML byte for byte.
+HTML SHA-256: 0d31fd0233dbb3c93fb58031edfb9e4d823d3c89b168c9d4cfe9f70d39607cc4
+The source branch is source-prototype; main remains unchanged. No force push.
+Direct public Chromium testing retains the documented proxy-certificate limit;
+behavior was verified using the identical bundled HTML at /guidance/ locally.
 
 Implemented:
 
@@ -42,7 +49,7 @@ Verification completed:
 - Production packaging builds successfully; Vite's >500kB advisory is expected.
 - Standalone release passes at /guidance/: rendered pixels, movement, guide,
   autosave/reload, offline clay armor, sword damage, no extra assets/browser errors.
-  Final ZIP integrity and HTML equality pass. Public delivery remains pending.
+  Final ZIP integrity and HTML equality pass. Public delivery matches this artifact.
 
 The first new browser run read an input result before its queued frame executed;
 the test now waits for observed state, matching existing controller tests. No
@@ -78,7 +85,7 @@ The fix is committed on source-prototype at 57c65a7. GitHub Pages reports built
 for a2bf8c857cd516ac954adfff3b76b671761dbdd4, and the public HTML matches the
 tested release exactly. No schema migration or clearing browser data is needed.
 
-## Current work
+## Earlier work (0.2)
 
 The user approved developing the creation system with editable presets, optional
 shaping assistance, description assistance, and physical hook/lasso interactions
@@ -144,9 +151,9 @@ Start only one dev server; it may already serve port 5173. Processes do not surv
 an environment restart. Chromium is /usr/bin/chromium. Browser suites use software
 WebGL and should run sequentially. Reports/screenshots are in ignored test-results/.
 
-## Hosting and source preservation
+## Previous hosting record (0.2.1)
 
-Prototype 0.2.1 is live:
+Prototype 0.2.1 was published at:
 https://splcloseone.github.io/guidance/?v=0.2.1
 
 GitHub Pages uses gh-pages, root folder. Published commit:
@@ -180,7 +187,7 @@ housing or mobile touch input yet. Controller API is exercised synthetically;
 physical hardware compatibility is not certified. Browser-local saves are not
 cloud/account saves. Preserve these distinctions in handoffs and user messages.
 
-## Next step
+## Previous next step (0.2.1)
 
 Let the user test this release. Prioritize their feedback about shaping, catching,
 rescue, slam motion, and breakout effort before adding another large system.
