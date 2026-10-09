@@ -1,8 +1,8 @@
 # The Source — continuation checkpoint
 
 Updated 2026-10-09. Read README.md, AGENTS.md, docs/ARCHITECTURE.md, and
-DESIGN.md before continuing. The active upgrade is still being verified; do not
-assume the current working files have reached the public play site yet.
+DESIGN.md before continuing. Prototype 0.2.0 is published and ready for player
+feedback. Preserve the release and test evidence below when extending it.
 
 ## Current work
 
@@ -11,7 +11,7 @@ shaping assistance, description assistance, and physical hook/lasso interactions
 against practice characters. They requested a difficult repeated-press breakout,
 friendly rescues, autosave, and a codebase another developer can continue.
 
-Implemented in working files:
+Implemented and released:
 
 - Version 2 creation records, legacy-save migration, stable design IDs.
 - Ball/hook/lasso/claw presets; editable curve points in three axes; optional
@@ -40,9 +40,18 @@ Implemented in working files:
   2 m. The ally must physically reach the safe area; the success criterion remains.
 - Build/package succeeded. ZIP integrity and HTML equality were checked using
   Python's independent ZIP reader. Vite's >500 kB advisory is not a build failure.
-- Older browser suites initially lost the Vite server connection. Restarted Vite
-  and rerunning those checks, followed by standalone-browser validation.
-- Public deployment and source push are pending these last release checks.
+- After restarting Vite, all original browser suites passed: functional, hook,
+  and controller. No browser errors were reported.
+- The standalone release passed at the /guidance/ subpath: rendered scene,
+  keyboard movement, guide, autosave/reload, no extra asset requests, and offline
+  gameplay. Managed Chromium blocks file URLs, so this used an isolated server.
+- GitHub Pages reports built for c0683e78b75c320d43adbc1c97d30f0b6fa53e83.
+  An HTTPS request with certificate verification retrieved HTML exactly matching
+  the tested release (SHA-256 below).
+- Direct public-site Chromium navigation was blocked by the cloud proxy's
+  certificate trust (ERR_CERT_AUTHORITY_INVALID). No TLS verification was disabled.
+  Public delivery was verified by curl; game behavior by the identical local
+  artifact. Physical controller hardware remains untested.
 
 ## Running checks
 
@@ -63,17 +72,24 @@ WebGL and should run sequentially. Reports/screenshots are in ignored test-resul
 
 ## Hosting and source preservation
 
-Confirmed GitHub Pages is now enabled and built, branch gh-pages, root folder:
-https://splcloseone.github.io/guidance/
+Prototype 0.2.0 is live:
+https://splcloseone.github.io/guidance/?v=0.2.0
 
-That URL currently serves the previous hook prototype until this upgrade passes
-and is pushed. API requests are allowed; do not request the old network change
-again. The earlier static commit was b0fd5ff7fbe824eb37d48e4dbae38c934d0fc911.
+GitHub Pages uses gh-pages, root folder. Published commit:
+c0683e78b75c320d43adbc1c97d30f0b6fa53e83
+HTML SHA-256:
+a20b96026a5ab9f5d6f5ec75ed07b0deddc4395b1ac2bd088f5de5413547c93f
 
-Plan: commit the complete source and handoff on source-prototype, push that branch,
-then publish the verified web artifact and check the deployed game. Main currently
-contains the original README; avoid overwriting it or force-pushing any branch.
-Local files are saved but the upgraded source is not yet committed or pushed.
+Complete editable source, tests and handoff are on source-prototype:
+https://github.com/splcloseone/guidance/tree/source-prototype
+The implementation commit is ad12aa0; subsequent documentation commits record
+release verification. Main retains the original README. No force push was used.
+Generated files stay in ignored releases/; rerun npm run package:play to reproduce.
+The old hook-only release is retained in gh-pages history at b0fd5ff7.
+
+Network access is working. Do not request the earlier api.github.com or
+splcloseone.github.io additions again. Future publishing needs the existing
+repository access and the explicit --publish flag, not a new Pages setup.
 
 The cloud environment configuration already stores tested install_script and
 start_skill, plus api.github.com and splcloseone.github.io network additions.
@@ -89,3 +105,10 @@ rigging, free-form AI generation, full combat/parrying, world travel, economy,
 housing or mobile touch input yet. Controller API is exercised synthetically;
 physical hardware compatibility is not certified. Browser-local saves are not
 cloud/account saves. Preserve these distinctions in handoffs and user messages.
+
+## Next step
+
+Let the user test this release. Prioritize their feedback about shaping, catching,
+rescue, slam motion, and breakout effort before adding another large system.
+Do not repeat completed checks unless relevant code changes or a new failure
+warrants it. Keep the hosted build and source branch clearly distinguished.
