@@ -125,3 +125,21 @@ select:focus-visible,textarea:focus-visible{outline:2px solid var(--jade);outlin
 @media(max-height:550px) and (min-width:600px){.practice-panel{top:218px;right:20px;max-height:calc(100vh - 280px);padding:10px;width:208px}.practice-heading{margin-bottom:7px}.practice-consent,#practice-status{margin-top:8px}.actionbar{width:460px}.meditating .actionbar{width:calc(100vw - 378px)}.workshop-header h1{font-size:22px}}
 
 #creation-preview{touch-action:none;cursor:crosshair}.preview-label{pointer-events:none}.workshop-small-button[aria-pressed=true]{border-color:var(--jade);color:var(--jade);background:#8fdcc817}
+/* Combat additions preserve the sanctum layout. */
+.combat-controls{border-top:1px solid #a6bda838;margin-top:10px;padding-top:10px;display:grid;gap:7px}
+.combat-controls button,.clay-dialog button,.clay-dialog select{background:#203b38;color:#e8decb;border:1px solid #b8bd9160;border-radius:4px;padding:8px;cursor:pointer;font:inherit}
+.combat-controls button[aria-pressed=true]{border-color:white;box-shadow:0 0 12px #ffffff28}
+.combat-controls p{font-size:10px;line-height:1.6;margin:0;color:#cedacb}
+#damage-layer{position:fixed;inset:0;pointer-events:none;z-index:12;overflow:hidden}
+.damage-number{position:absolute;font:700 25px Georgia,serif;color:#ffdb9c;text-shadow:0 2px 3px #071718,0 0 9px #071718;transform:translate(-50%,-50%);white-space:nowrap}
+.damage-number.incoming{color:#ff9292}.damage-number.protected{color:#ecffff}
+.clay-dialog{width:min(1060px,94vw);height:min(790px,90vh);max-width:none;background:#102725;color:#e8decb;border:1px solid #c3aa7670;padding:24px;border-radius:8px;overflow:auto}
+.clay-dialog::backdrop{background:#061818cc;backdrop-filter:blur(5px)}
+.clay-dialog header{display:flex;justify-content:space-between;align-items:center;gap:20px}.clay-dialog h2{font:30px Georgia,serif;margin:12px 0}
+.clay-layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:24px;height:calc(100% - 80px)}
+.clay-stage{display:flex;flex-direction:column;min-height:260px;background:radial-gradient(ellipse,#35514b66,transparent 70%)}
+#clay-canvas{width:100%;height:calc(100% - 40px);min-height:260px;touch-action:none;cursor:crosshair}
+.clay-dialog p{font-size:12px;line-height:1.6;color:#b9cbbd}.clay-stage p{text-align:center}
+.clay-tools{overflow:auto;display:flex;flex-direction:column;gap:10px;padding-right:6px}.clay-tools label{font-size:12px}.clay-tools input[type=range]{width:100%}.clay-tools details summary{cursor:pointer;font-size:12px}.clay-tools details[open]{display:grid;gap:10px}
+.clay-dialog button:disabled{opacity:.35;cursor:default}.clay-dialog :focus-visible{outline:2px solid #e4c98a;outline-offset:3px}
+@media(max-width:720px){.clay-layout{grid-template-columns:1fr;height:auto}.clay-stage{height:320px}.clay-tools{overflow:visible}.clay-dialog h2{font-size:22px}}

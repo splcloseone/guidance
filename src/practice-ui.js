@@ -7,6 +7,7 @@ export function practiceInstructions(practice = {}) {
   };
   if (finished[practice.status]) return finished[practice.status];
   return {
+    melee: 'LMB / RT swings. Press again during recovery to chain three strikes. C / controller B spikes. The rival warns before countering.',
     rival: 'Catch the rival, reel them closer, then lift and slam. They will struggle to escape.',
     rescue: 'Catch your ally near the ledge and reel them to safety. Their momentum pulls on you too.',
     breakout: 'Tap the struggle button repeatedly. Each new press counts; holding does not. Keep moving while caught.',
@@ -31,12 +32,12 @@ export function createPracticeUI({ simulation, startPractice, resetPractice, sto
       catch { toast('Your friendly-hook preference could not be saved on this device.'); }
     });
   }
-  for (const mode of ['rival', 'rescue', 'breakout']) byId(`practice-${mode}`)?.addEventListener('click', () => startPractice(mode));
+  for (const mode of ['rival', 'rescue', 'breakout', 'melee']) byId(`practice-${mode}`)?.addEventListener('click', () => startPractice(mode));
   byId('practice-reset')?.addEventListener('click', resetPractice);
   return {
     update(snapshot, device) {
       const incoming = snapshot.incomingTether;
-      const target = snapshot.actors?.find(actor => actor.id === snapshot.hook?.bodyId);
+      const target = snapshot.actors?.find(actor => actor.id === (snapshot.hook?.bodyId || (snapshot.practice.mode === 'melee' ? 'practice-rival' : null)));
       const escape = incoming?.escapeProgress ?? target?.escapeProgress ?? 0;
       const status = byId('practice-status');
       if (status) status.textContent = incoming
@@ -51,6 +52,7 @@ export function createPracticeUI({ simulation, startPractice, resetPractice, sto
       const health = byId('target-health');
       if (health) { health.value = target?.health ?? 100; health.setAttribute('aria-valuetext', target ? `${Math.ceil(target.health)} health` : 'No character caught'); }
       const integrity = byId('tether-integrity');
+      if(integrity){integrity.hidden=!incoming&&!snapshot.hook;byId('practice-target-vitals').querySelector('label[for=tether-integrity]').hidden=integrity.hidden;}
       if (integrity) { integrity.value = incoming || target ? (1 - escape) * 100 : 0; integrity.setAttribute('aria-valuetext', `${Math.round(incoming || target ? (1 - escape) * 100 : 0)} percent binding strength remains`); }
     },
   };

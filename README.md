@@ -1,10 +1,9 @@
-# The Source — creation prototype
+# The Source — meditation and combat prototype
 
-Create a tether in meditation and try it in a third-person 3D proving ground.
-Begin with a ball, hook, lasso, or claw; reshape it, save designs, and catch
-anchors, pull crates, rescue a practice ally, or lift and slam a practice rival.
-The existing meditation layout, minimap, and keyboard/controller controls remain
-the foundation of the prototype.
+Sculpt one ball of the Source into a solid design in meditation, give it an armor
+or sword purpose, and test it in the proving ground. Equip a physical sword or
+fists, deliberately spike your white aura, and see damage numbers on actual hits.
+The existing tether workshop, rescues, slams, minimap, and saves remain available.
 
 ## Play
 
@@ -17,7 +16,40 @@ For an offline copy, extract `releases/The-Source-Play.zip` and open
 `The-Source.html`. Keep the same browser and file location to retain local saves.
 The game does not currently have touch movement controls.
 
-## Make and test a creation
+## Solid clay and combat (0.3)
+
+In meditation choose **Open solid clay lab**. Drag the ball with Pull, Add volume,
+Carve, Smooth, or Flatten. Right-drag rotates the view. Mirror symmetry and the
+leg fitting outline can be disabled. Pants and sword guides are editable starting
+shapes; Undo/Redo retain 24 steps while the lab is open. Precise brush sliders,
+Apply brush, and rotation buttons are available for keyboard/controller users.
+
+Choose **Wear as leg armor** or **Wield as a sword**, finish the lab, and save the
+design. Enter the ground and press **N / LT + X** to manifest it. Armor reduces
+melee damage by 25%; the created sword supports three strikes. Each costs 10 of
+the Source to activate plus 1/sec. Meditation, exhaustion and reset dismiss them.
+A sculpture purpose currently previews and saves a shape without a world action.
+The solid is a bounded 28³ density field, not an unrestricted professional modeler.
+Combat properties are fixed for this test; surface shape does not calculate armor
+coverage, blade sharpness, or weapon reach. Creatures and riding are still future work.
+
+Choose **Sword practice** or press **5 / LT + D-pad left**. This places you by a
+rival and equips a physical sword. **LMB / RT** attacks with the selected equipment.
+Press again during recovery to queue the next strike. **V / D-pad down** cycles
+tether, fists, and physical sword. **F** always attempts a tether cast; selecting
+Tether restores casting with RT. **C / controller B** deliberately spikes/calm your
+aura; B still closes menus. Spiking costs 5 to activate + 2/sec, increases melee
+damage by 50%, and reduces melee damage taken by 30%. It stacks with armor up to
+55% total protection and can coexist with an active tether. It does not protect
+against falls. Empty reserves weaken ordinary melee damage and movement.
+
+The rival telegraphs a 12-damage counter before striking. Step out of range or
+compare damage with protection active. Floating numbers show actual damage,
+including tether slams and incoming hits. These are local practice characters;
+there is no multiplayer, parrying, or guard system yet. Physical weapons consume
+stamina, not the Source. Sounds start after a browser keyboard/pointer interaction.
+
+## Make and test a tether
 
 1. Choose **Ball** in meditation. Its editor opens automatically. Click and hold
    on the ball in the preview or editor, then drag to trace your own hook outline.
@@ -53,7 +85,12 @@ Controller labels below use the standard browser Gamepad layout.
 | Look | Hold right mouse and move | Right stick |
 | Jump | Space | A / south face button |
 | Sprint | Shift | Press left stick |
-| Cast | Left mouse / F | Right trigger |
+| Use selected equipment | Left mouse | Right trigger |
+| Cast tether | F (or left mouse with Tether selected) | Right trigger with Tether selected |
+| Cycle tether / fists / sword | V | D-pad down |
+| Spike / calm white aura | C | B in the field |
+| Manifest / dismiss solid design | N | LT + X |
+| Sword practice | 5 | LT + D-pad left |
 | Release | E | Left bumper |
 | Reel in | Q | Left trigger |
 | Pay out tether | R | Right bumper |
@@ -62,7 +99,7 @@ Controller labels below use the standard browser Gamepad layout.
 | Rival practice | 1 | D-pad left |
 | Rescue practice | 2 | D-pad up |
 | Breakout practice | 3 | D-pad right |
-| Reset practice | 4 | D-pad down |
+| Reset practice | 4 / Reset practice button | Restart a scenario with its shortcut |
 | Meditation | M | Y / north face button |
 | Close menu | Escape | B / east face button |
 | Expand map | G / click minimap | View / Select |
@@ -129,7 +166,7 @@ Actual run outcomes and remaining work are recorded in [PROGRESS.md](PROGRESS.md
 ## Scope and handoff
 
 This is a local prototype with practice characters. It has no multiplayer yet.
-Shaping edits a bounded curve or ball; the description helper does not generate
+Tether shaping edits a bounded curve or ball; the clay lab edits a bounded solid; the description helper does not generate
 arbitrary objects or creatures. A horse still needs articulation, locomotion,
 mounting, and behavior systems.
 
@@ -139,7 +176,7 @@ around bodies. Thickness changes reinforcement; overall scale and point position
 currently affect appearance. Slams damage a rival on a qualifying collision after
 a deliberate slam, not merely because the action button was pressed.
 
-The full open world, unrestricted creation system, combat, networking, races,
+The full open world, unrestricted creation system, complete combat, networking, races,
 worlds, dungeons, houses, and economy remain future work. The code separates saved
 definitions, simulation, rendering, input, and workshop UI to support continued
 development; those boundaries do not solve every future feature in advance.

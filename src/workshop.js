@@ -236,6 +236,7 @@ export function initWorkshop({ getCreation, onChange, storage, toast = () => {} 
   // same gesture as the editor while a ball/new outline is being shaped.
   const preview = $('creation-preview');
   listen(preview, 'pointerdown', event => {
+    if(getCreation().form === 'clay') { $('open-clay').click(); return; }
     if (getCreation().form === 'orb' || drawingMode) beginStroke(event, preview);
     else { setPanel('shape', true); canvas.scrollIntoView({ block: 'nearest' }); }
   });
@@ -375,7 +376,9 @@ export function initWorkshop({ getCreation, onChange, storage, toast = () => {} 
     $('shape-draw').setAttribute('aria-pressed', String(drawingMode));
     $('shape-edit').setAttribute('aria-pressed', String(!drawingMode));
     canvas.dataset.mode = drawingMode ? 'draw' : 'edit';
-    $('preview-interaction-hint').textContent = current.form === 'orb' || drawingMode ? 'DRAG THE BALL TO DRAW YOUR SHAPE' : 'CLICK TO EDIT YOUR SHAPE';
+    $('shape-toggle').hidden = current.form === 'clay';
+    if(current.form === 'clay') $('shape-panel').hidden = true;
+    $('preview-interaction-hint').textContent = current.form === 'clay' ? 'CLICK TO OPEN THE SOLID CLAY LAB' : current.form === 'orb' || drawingMode ? 'DRAG THE BALL TO DRAW YOUR SHAPE' : 'CLICK TO EDIT YOUR SHAPE';
     document.querySelectorAll('[data-preset]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.preset === current.form)));
     $('stretch-creation').hidden = current.form !== 'orb';
     $('shaping-assistance').checked = current.shape.assisted;

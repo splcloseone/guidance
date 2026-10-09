@@ -1,3 +1,5 @@
+import { createCombatView } from './combat-view.js';
+import { initClayWorkshop } from './clay-workshop.js';
 import * as THREE from 'three';
 import './style.css';
 import { createWorld } from './world.js';
@@ -31,7 +33,7 @@ let lastMenuAxis = 0;
 let autoSaveTimer;
 let lastSafePosition = [0, 1.2, 15];
 let lastSavedAt = 0;
-let workshop;
+let workshop, clayWorkshop, combatView;
 let practiceUI;
 let manifestationSignature = '';
 let scene, renderer, camera, world, simulation, controls, avatar, rope, hook, previewRenderer, previewScene, previewCamera, previewHook;
@@ -57,7 +59,7 @@ function setStatus() {
 function applyCreation() {
   creation = normalizeCreation(creation);
   simulation?.setCreation(creation);
-  const signature = JSON.stringify([creation.form, creation.shape]);
+  const signature = JSON.stringify([creation.form, creation.shape, creation.solid]);
   if (hook && previewHook && signature !== manifestationSignature) {
     for (const [item, parent] of [[hook, scene], [previewHook, previewScene]]) {
       parent.remove(item.group);
@@ -78,8 +80,8 @@ function applyCreation() {
     const selected=button.dataset.color.toLowerCase()===creation.color.toLowerCase();
     button.setAttribute('aria-pressed',String(selected));button.classList.toggle('selected',selected);
   });
-  $('activation-cost').textContent = `${simulation.activationCost.toFixed(1)}`;
-  $('upkeep-cost').textContent = `${simulation.upkeepCost.toFixed(2)} / sec`;
+  $('activation-cost').textContent = creation.form === 'clay' ? '10' : `${simulation.activationCost.toFixed(1)}`;
+  $('upkeep-cost').textContent = creation.form === 'clay' ? '1 / sec' : `${simulation.upkeepCost.toFixed(2)} / sec`;
   document.documentElement.style.setProperty('--source-color', creation.color);
   if (hook) { hook.material.color.set(creation.color); hook.material.emissive.set(creation.color); hook.group.scale.setScalar(creation.hookSize); }
   if (previewHook) { previewHook.material.color.set(creation.color); previewHook.material.emissive.set(creation.color); previewHook.group.scale.setScalar(creation.hookSize * 1.25); }
@@ -121,7 +123,7 @@ function setMeditation(value) {
   $('workshop').setAttribute('aria-hidden', String(!value));
   $('meditate-toggle').textContent = value ? 'Return to ground' : 'Meditate';
   $('mode-label').textContent = value ? 'MEDITATION' : 'PROVING GROUND';
-  if (value) { simulation.release('meditation'); projectile = null; controls.clear(); }
+  if (value) { simulation.combat.reset(); simulation.release('meditation'); projectile = null; controls.clear(); }
   else { $('enter-ground').blur(); $('game-canvas').focus({preventScroll:true}); toast('Aim at a ring, crate, or practice character. Cast with F / RT.'); }
   save(false);
   resize();
@@ -151,6 +153,7 @@ function findTarget() {
 
 function cast() {
   if (meditating || $('guide-dialog').open || viewExpanded) return;
+  if (creation.form === 'clay') { toast('Use N / LT + X to manifest your solid design. Tethers use the curve editor.'); return; }
   if (creation.form === 'orb') { toast('Stretch the ball of the Source into a tethered form in meditation first.'); return; }
   if (simulation.hook || projectile) { toast('Release the current tether before casting again.'); return; }
   const cost = simulation.activationCost;
@@ -193,8 +196,9 @@ function startPractice(mode) {
   simulation.startPractice(mode);
   controls.clear();
   aimAt(mode === 'rescue' ? 'practice-ally' : 'practice-rival');
+  if(mode === 'melee') pitch=.2;
   $('game-canvas').focus({ preventScroll: true });
-  toast(mode === 'breakout' ? 'Tap B / R3 repeatedly to escape. Holding does not count as repeated presses.' : mode === 'rescue' ? 'Catch your ally with F / RT before they fall, then reel them to safety.' : 'Catch the rival. T / X lifts them; press again to slam.');
+  toast(mode === 'melee' ? 'Physical sword equipped. LMB / RT swings; C / B spikes. Watch for the rival’s counter.' : mode === 'breakout' ? 'Tap B / R3 repeatedly to escape. Holding does not count as repeated presses.' : mode === 'rescue' ? 'Catch your ally with F / RT before they fall, then reel them to safety.' : 'Catch the rival. T / X lifts them; press again to slam.');
 }
 
 function drawMiniMap() {
@@ -225,6 +229,11 @@ function drawMiniMap() {
 }
 
 function updateHUD() {
+  const combat = simulation.combat;
+  $('combat-status').textContent = `${combat.spiking ? 'WHITE AURA · 2/sec' : 'Aura calm'} · ${combat.weapon.replace('-', ' ')}${combat.wearing ? ' · armor active' : ''}`;
+  $('spike-toggle').setAttribute('aria-pressed',String(combat.spiking));
+  $('equip-toggle').textContent = `Equip: ${combat.weapon.replace('-', ' ')} · V / ↓`;
+  $('manifest-solid').disabled = creation.form !== 'clay' || creation.solid.purpose === 'sculpture';
   $('source-fill').style.width=`${simulation.source}%`;
   $('source-value').textContent=`${Math.ceil(simulation.source)} / 100`;
   $('stamina-fill').style.width=`${simulation.stamina}%`;
@@ -233,6 +242,8 @@ function updateHUD() {
   $('controller-status').textContent=controls.gamepadName?'Controller connected':'Keyboard & mouse';
   document.body.dataset.input=controls.device;
   const labels=controls.device==='controller'?{cast:'RT',release:'LB',reel:'LT / RB',jump:'A',meditate:'Y',slam:'X',struggle:'R3'}:{cast:'LMB / F',release:'E',reel:'Q / R',jump:'SPACE',meditate:'M',slam:'T',struggle:'B'};
+  labels.cast = controls.device === 'controller' ? 'RT' : combat.weapon === 'tether' ? 'LMB / F' : 'LMB';
+  document.querySelector('[data-action=cast] span').textContent = combat.weapon === 'tether' ? 'Cast' : 'Attack';
   document.querySelectorAll('[data-action]').forEach(element=>{const key=element.matches('kbd')?element:element.querySelector('kbd');if(key)key.textContent=labels[element.dataset.action]||'';});
   document.querySelector('.look-hint').textContent=controls.device==='controller'?'Left stick to move · right stick to look':'WASD to move · Hold RMB to look around';
   if (simulation.hook) {
@@ -275,9 +286,9 @@ function updateControllerMenu(dt) {
   const pad=connectedGamepad();
   if(!pad){lastPadMenu=[];return;}
   const down=i=>!!pad.buttons[i]?.pressed;
-  const dialogOpen=$('guide-dialog').open;
+  const dialogOpen=$('guide-dialog').open || $('clay-dialog').open;
   if(!meditating&&!dialogOpen){lastPadMenu=pad.buttons.map(b=>b.pressed);return;}
-  const elements=dialogOpen?[$('guide-close')]:Array.from($('workshop').querySelectorAll('button,input,select,textarea')).filter(element => !element.disabled && element.getClientRects().length);
+  const elements=$('clay-dialog').open?Array.from($('clay-dialog').querySelectorAll('button,input,select,summary')).filter(el=>!el.disabled&&el.getClientRects().length):dialogOpen?[$('guide-close')]:Array.from($('workshop').querySelectorAll('button,input,select,textarea')).filter(element => !element.disabled && element.getClientRects().length);
   const vertical=pad.axes[1]||0;
   const now=performance.now();
   let direction=0;
@@ -298,7 +309,7 @@ function updateControllerMenu(dt) {
     focused.dispatchEvent(new Event('change', { bubbles: true }));
   }
   if(down(0)&&!lastPadMenu[0]) {
-    if(elements.includes(focused)&&(focused.tagName==='BUTTON'||focused.matches('input[type=checkbox]')))focused.click();
+    if(elements.includes(focused)&&(focused.tagName==='BUTTON'||focused.tagName==='SUMMARY'||focused.matches('input[type=checkbox]')))focused.click();
     else if(!elements.includes(focused)){controllerMenuIndex=0;elements[0]?.focus();}
   }
   lastPadMenu=pad.buttons.map(b=>b.pressed);
@@ -342,25 +353,44 @@ function updateRope(time) {
   hook.group.position.copy(end);hook.group.lookAt(start);hook.group.rotateX(Math.PI/2);
 }
 
+function cycleEquipment() {
+  const modes=['tether','fists','sword',...(simulation.combat.manifested?['source-sword']:[])];
+  simulation.combat.equip(modes[(modes.indexOf(simulation.combat.weapon)+1)%modes.length]);
+}
+function manifestSolid() {
+  if(!simulation.combat.manifest()) toast('Choose a solid armor or sword design in meditation, then manifest it here.');
+}
+function primary() {
+  if(simulation.combat.weapon === 'tether') { if(creation.form==='clay')manifestSolid();else cast(); return; }
+  const direction=new THREE.Vector3();camera.getWorldDirection(direction);
+  simulation.combat.attack(direction.toArray());
+}
+
 function frame() {
   requestAnimationFrame(frame);
   const dt=Math.min(clock.getDelta(),.1),time=clock.elapsedTime;
   const input=controls.read(dt);
   updateControllerMenu(dt);
-  for(const action of input.actions){
+  for(let action of input.actions){
+    if(action==='context-b') action = meditating || $('guide-dialog').open || $('clay-dialog').open || viewExpanded ? 'escape' : 'spike';
+    if($('clay-dialog').open){if(action==='escape'||action==='meditate')$('clay-dialog').close();continue;}
     if(action==='map'){if($('guide-dialog').open)$('guide-dialog').close();toggleMap();}
     else if(action==='guide'){if($('guide-dialog').open)$('guide-dialog').close();else $('guide-dialog').showModal();}
     else if(action==='meditate') {if($('guide-dialog').open)$('guide-dialog').close();if(viewExpanded)toggleMap();setMeditation(!meditating);}
     else if(action==='escape') {if($('guide-dialog').open)$('guide-dialog').close();else if(viewExpanded)toggleMap();else if(meditating)setMeditation(false);else setMeditation(true);}
     else if(!meditating&&!$('guide-dialog').open&&!viewExpanded){
       if(action==='cast')cast();
+      if(action==='primary') primary();
+      if(action==='spike')simulation.combat.toggleAura();
+      if(action==='equip')cycleEquipment();
+      if(action==='manifest')manifestSolid();
       if(action==='release')release();
       if(action==='jump')jumpPending=true;
       if(action==='slam'){
         const direction = new THREE.Vector3(); camera.getWorldDirection(direction);
         if(!simulation.slam(direction.toArray())) toast('Catch a rival to lift and slam. Each motion needs reserve and a brief recovery.');
       }
-      if (['practice-rival','practice-rescue','practice-breakout'].includes(action)) startPractice(action.slice(9));
+      if (['practice-rival','practice-rescue','practice-breakout','practice-melee'].includes(action)) startPractice(action.slice(9));
       if (action === 'practice-reset') { projectile = null; simulation.resetPractice(); }
     }
   }
@@ -395,13 +425,15 @@ function frame() {
     if(event.type==='actor-rescued')toast('Rescue complete. Your tether brought your ally to safety.');
     if(event.type==='actor-escaped')toast('The rival broke free. Reinforce your tether or act before they escape.');
     if(event.type==='escaped')toast('You broke free of the tether.');
-    if(event.type==='actor-damaged')toast(`Impact · ${Math.round(event.damage)} damage`);
+    combatView.event(event,simulation);
+    if(event.type==='combat-message')toast(event.message);
     if(event.type==='hook-failed')toast(event.reason);
   }
   world.updatePractice?.(simulation.getSnapshot(),time,creation);
   updateCamera(dt);updateRope(time);world.update(time,dt);
+  combatView.update(simulation.getSnapshot(),creation,dt,time);
   renderer.render(scene,camera);
-  if(meditating&&previewRenderer){previewHook.group.rotation.y=Math.sin(time*.5)*.6+.25;previewHook.group.rotation.z=.18;previewRenderer.render(previewScene,previewCamera);}
+  if(meditating&&previewRenderer&&!$('clay-dialog').open){previewHook.group.rotation.y=Math.sin(time*.5)*.6+.25;previewHook.group.rotation.z=.18;previewRenderer.render(previewScene,previewCamera);}
   if(Math.floor(time*10)!==frame.lastHUD){frame.lastHUD=Math.floor(time*10);updateHUD();drawMiniMap();}
 }
 
@@ -414,7 +446,7 @@ function init() {
   const restored=loadSession(storage);
   if(restored){restoreSession(simulation,restored);lastSafePosition=[...restored.position];hookCount=restored.objectives.hookCount;swingComplete=restored.objectives.swingComplete;pullComplete=restored.objectives.pullComplete;}
   controls=new Controls(canvas);camera=new THREE.PerspectiveCamera(57,1,.1,450);
-  avatar=createAvatar();scene.add(avatar.group);hook=createHook(creation);hook.group.visible=false;scene.add(hook.group);
+  avatar=createAvatar();scene.add(avatar.group);combatView=createCombatView(avatar,scene,camera);hook=createHook(creation);hook.group.visible=false;scene.add(hook.group);
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(ropePositions,3));
   rope=new THREE.Line(geometry,new THREE.LineBasicMaterial({color:creation.color,transparent:true,opacity:.95}));rope.visible=false;scene.add(rope);
   previewRenderer=new THREE.WebGLRenderer({canvas:$('creation-preview'),antialias:true,alpha:true});previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));previewRenderer.outputColorSpace=THREE.SRGBColorSpace;previewRenderer.toneMapping=THREE.ACESFilmicToneMapping;
@@ -428,6 +460,10 @@ function init() {
   document.querySelectorAll('[data-color]').forEach(button=>button.addEventListener('click',()=>{creation.color=button.dataset.color;dirty=true;applyCreation();}));
   $('save-creation').addEventListener('click',()=>save(true));
   workshop=initWorkshop({getCreation:()=>creation,onChange:next=>{creation=normalizeCreation(next);applyCreation();queueAutoSave();},storage,toast});
+  clayWorkshop=initClayWorkshop({getCreation:()=>creation,onChange:next=>{creation=normalizeCreation(next);applyCreation();queueAutoSave();},toast});
+  $('spike-toggle').onclick=()=>simulation.combat.toggleAura();
+  $('equip-toggle').onclick=cycleEquipment;
+  $('manifest-solid').onclick=manifestSolid;
   practiceUI=createPracticeUI({simulation,startPractice,resetPractice:()=>{projectile=null;simulation.resetPractice();toast('Practice characters reset.');},storage,toast});
   $('workshop').addEventListener('input',queueAutoSave);
   document.querySelectorAll('[data-color]').forEach(button=>button.addEventListener('click',queueAutoSave));

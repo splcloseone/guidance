@@ -1,3 +1,4 @@
+import { clayGeometry } from './clay-mesh.js';
 import * as THREE from 'three';
 import { normalizeCreation } from './creation.js';
 
@@ -21,7 +22,9 @@ export function createHook(settings = '#8fdcc8') {
   group.userData.creationForm = creation.form;
   const material = new THREE.MeshStandardMaterial({ color: creation.color, metalness: .54, roughness: .24, emissive: creation.color, emissiveIntensity: .34 });
   const { points, thickness, assisted } = creation.shape;
-  if (creation.form === 'orb') {
+  if (creation.form === 'clay') {
+    group.add(new THREE.Mesh(clayGeometry(creation.solid),material));
+  } else if (creation.form === 'orb') {
     const bounds = new THREE.Box3().setFromPoints(points.map(point => new THREE.Vector3(...point)));
     const radii = bounds.getSize(new THREE.Vector3()).multiplyScalar(.5);
     // Orb handles stretch the ball on each axis. They do not imply an articulated creature.
@@ -65,11 +68,12 @@ export function createHook(settings = '#8fdcc8') {
 
 export function createAvatar() {
   const group = new THREE.Group();
+  const torso = new THREE.Group(); group.add(torso);
   const cloth = new THREE.MeshStandardMaterial({ color: '#e8decb', roughness: .85 });
   const dark = new THREE.MeshStandardMaterial({ color: '#203a40', roughness: .85 });
   const skin = new THREE.MeshStandardMaterial({ color: '#c99672', roughness: .78 });
   const brass = new THREE.MeshStandardMaterial({ color: '#c5a16a', metalness: .7, roughness: .34 });
-  const mesh = (geometry, material, x, y, z, parent = group) => {
+  const mesh = (geometry, material, x, y, z, parent = torso) => {
     const result = new THREE.Mesh(geometry, material); result.position.set(x,y,z);
     result.castShadow = true; result.receiveShadow = true; parent.add(result); return result;
   };
@@ -84,12 +88,12 @@ export function createAvatar() {
     const leg = new THREE.Group(); leg.position.set(sign*.13,.59,0); group.add(leg);
     mesh(new THREE.CapsuleGeometry(.095,.28,3,8),dark,0,-.21,0,leg);
     mesh(new THREE.BoxGeometry(.18,.14,.28),dark,0,-.49,-.035,leg); legs.push(leg);
-    const arm = new THREE.Group(); arm.position.set(sign*.27,1.08,0); group.add(arm);
+    const arm = new THREE.Group(); arm.position.set(sign*.27,1.08,0); torso.add(arm);
     mesh(new THREE.CapsuleGeometry(.085,.26,3,8),cloth,sign*.025,-.16,0,arm);
     mesh(new THREE.CylinderGeometry(.098,.098,.12,8),brass,sign*.025,-.32,0,arm);
     mesh(new THREE.SphereGeometry(.082,8,6),skin,sign*.025,-.40,0,arm); arms.push(arm);
   }
   const aura = new THREE.Mesh(new THREE.TorusGeometry(.41,.012,6,48),new THREE.MeshBasicMaterial({color:'#8fdcc8',transparent:true,opacity:.65}));
   aura.rotation.x=Math.PI/2; aura.position.y=.05; group.add(aura);
-  return {group,legs,arms,aura};
+  return {group,legs,arms,aura,torso};
 }

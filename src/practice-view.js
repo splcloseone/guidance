@@ -154,6 +154,11 @@ export function createPracticeView({ scene, actors, objects, hookTargets }) {
       const stride = Math.min(0.55, view.speed * 0.15);
       avatar.legs.forEach((leg, index) => { leg.rotation.x = Math.sin(time * 9 + index * Math.PI) * stride; });
       avatar.arms.forEach((arm, index) => { arm.rotation.x = caught ? -0.85 : Math.sin(time * 9 + (1 - index) * Math.PI) * stride * 0.7; });
+      if(snapshot.practice?.mode==='melee' && descriptor.role==='rival') {
+        const p=snapshot.player.position;
+        avatar.group.rotation.y=Math.atan2(proxy.position.x-p[0],proxy.position.z-p[2]);
+        if(snapshot.combat?.counterWindup) avatar.arms[1].rotation.x=-1.4;
+      }
       avatar.aura.rotation.z = time * 0.4;
       boundLoop.visible = caught;
       boundLoop.material.color.set(creation.color || snapshot.creation?.color || '#d7fff3');
@@ -164,6 +169,7 @@ export function createPracticeView({ scene, actors, objects, hookTargets }) {
       if (state?.rescued) status = 'Rescued · safe landing';
       if (caught) status = descriptor.role === 'ally' ? 'Caught · pull to safety' : `Bound · escape ${escape}% · ${health} HP`;
       if (snapshot.incomingTether?.actorId === id) status = 'Holding your tether';
+      if (snapshot.practice?.mode==='melee' && descriptor.role==='rival') status = `${snapshot.combat?.counterWindup ? 'COUNTER INCOMING' : 'Sword practice'} · ${health} HP`;
       if (health <= 0) status = 'Down · reset to practice';
       label.update(status);
     }

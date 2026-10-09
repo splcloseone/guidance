@@ -4,6 +4,23 @@ Updated 2026-10-09. Read README.md, AGENTS.md, docs/ARCHITECTURE.md, and
 DESIGN.md before continuing. Prototype 0.2.1 is published and ready for player
 feedback. Preserve the release and test evidence below when extending it.
 
+## 0.3 work checkpoint (not yet published)
+
+Implemented white aura spiking, physical sword and fists, three timed sword
+strikes, damage numbers, telegraphed practice counters, keyboard/controller
+controls, and solid clay lab. Clay supports pull/add/carve/smooth/flatten,
+optional symmetry and fitting guide, editable pants/sword guides, 24-step
+undo/redo, autosave/library, and explicit armor/sword purposes in the world.
+Current verification: all 54 Node tests pass; initial production build succeeds.
+Browser validation and publication remain in progress. Do not claim 0.3 is live
+until the release evidence below is updated. The first browser test exposed an
+assertion reading before a queued input was processed; tests now wait for the
+observable result, as the existing controller tests do.
+
+Limits: 28³ solid field; fixed combat stats rather than shape-derived properties;
+forward melee hit volume rather than exact blade mesh collision; basic procedural
+animation and armor deformation; local practice only. UI calls out these limits.
+
 ## Ball-shaping fix (0.2.1, published)
 
 The user reported that the ball could not be shaped. The old orb editor changed

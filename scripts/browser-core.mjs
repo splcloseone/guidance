@@ -4,13 +4,14 @@ import { resolve } from 'node:path';
 import { installGamepad, pixelStats } from './browser-utils.mjs';
 import { test as creation } from './browser-creation.mjs';
 import { test as practice } from './browser-practice.mjs';
+import { test as combatClay } from './browser-combat-clay.mjs';
 import { test as sculpt } from './browser-sculpt.mjs';
 
 // Run these suites sequentially: multiple simultaneous software WebGL renderers
 // make physics/input timing unreliable on small cloud machines.
 const url = process.env.APP_URL || 'http://127.0.0.1:5173';
 const output = resolve('test-results/core');
-const suites = { creation, practice, sculpt };
+const suites = { creation, practice, sculpt, combatClay };
 const selected = process.env.BROWSER_SUITE;
 if (selected && !suites[selected]) throw new Error(`Unknown core browser suite: ${selected}`);
 await mkdir(output, { recursive: true });
@@ -31,7 +32,7 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
     page.on('requestfailed', request => errors.push(`${request.url()}: ${request.failure()?.errorText}`));
-    if (name === 'practice') await installGamepad(page);
+    if (name === 'practice' || name === 'combatClay') await installGamepad(page);
     try {
       await page.goto(url, { waitUntil: 'networkidle' });
       await page.waitForFunction(() => window.__SOURCE_DEBUG__);

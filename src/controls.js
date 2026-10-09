@@ -24,7 +24,7 @@ export class Controls {
       this.device = 'keyboard';
       this.keys.add(event.code);
       if (event.repeat) return;
-      const action = { Space: 'jump', KeyF: 'cast', KeyE: 'release', KeyT: 'slam', Digit1: 'practice-rival', Digit2: 'practice-rescue', Digit3: 'practice-breakout', Digit4: 'practice-reset', KeyM: 'meditate', KeyG: 'map', KeyH: 'guide', Escape: 'escape' }[event.code];
+      const action = { Space: 'jump', KeyF: 'cast', KeyC: 'spike', KeyV: 'equip', KeyN: 'manifest', Digit5: 'practice-melee', KeyE: 'release', KeyT: 'slam', Digit1: 'practice-rival', Digit2: 'practice-rescue', Digit3: 'practice-breakout', Digit4: 'practice-reset', KeyM: 'meditate', KeyG: 'map', KeyH: 'guide', Escape: 'escape' }[event.code];
       if (action) this.actions.push(action);
     });
     window.addEventListener('keyup', event => this.keys.delete(event.code));
@@ -34,7 +34,7 @@ export class Controls {
     canvas.addEventListener('pointerdown', event => {
       this.device = 'keyboard';
       if (event.button === 2) { this.dragging = true; canvas.setPointerCapture(event.pointerId); }
-      if (event.button === 0) this.actions.push('cast');
+      if (event.button === 0) this.actions.push('primary');
     });
     canvas.addEventListener('pointermove', event => {
       if (this.dragging) { this.lookX += event.movementX; this.lookY += event.movementY; }
@@ -61,8 +61,8 @@ export class Controls {
       reel += Number(down(6)) - Number(down(5));
       sprint = down(10);
       struggle ||= down(11);
-      for (const [index, action] of [[0,'jump'],[1,'escape'],[2,'slam'],[3,'meditate'],[4,'release'],[7,'cast'],[8,'map'],[9,'guide'],[12,'practice-rescue'],[13,'practice-reset'],[14,'practice-rival'],[15,'practice-breakout']]) {
-        if (down(index) && !this.previousButtons[index]) this.actions.push(action);
+      for (const [index, action] of [[0,'jump'],[1,'context-b'],[2,'slam'],[3,'meditate'],[4,'release'],[7,'primary'],[8,'map'],[9,'guide'],[12,'practice-rescue'],[13,'equip'],[14,'practice-rival'],[15,'practice-breakout']]) {
+        if (down(index) && !this.previousButtons[index]) this.actions.push(down(6) && index === 2 ? 'manifest' : down(6) && index === 14 ? 'practice-melee' : action);
       }
       this.previousButtons = pad.buttons.map((_, index) => down(index));
     } else this.previousButtons = [];

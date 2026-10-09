@@ -1,3 +1,4 @@
+import { Combat } from './combat.js';
 import * as CANNON from 'cannon-es';
 import { createActor, resetActor, actorSnapshot, escapeThreshold, STRUGGLE_RULES } from './actors.js';
 import { normalizeCreation } from './creation.js';
@@ -45,6 +46,7 @@ export class SourceSimulation {
     this._jumpGrace = 0;
     this._impactSpeed = 0;
     this._exhausted = false;
+    this.combat = new Combat(this);
 
     const floorMaterial = new CANNON.Material('world');
     const playerMaterial = new CANNON.Material('player');
@@ -103,6 +105,7 @@ export class SourceSimulation {
   }
 
   setCreation(settings = {}) {
+    this.combat.dismiss();
     this.creation = normalizeCreation({ ...this.creation, ...settings,
       shape: { ...this.creation.shape, ...settings?.shape } });
     return normalizeCreation(this.creation);
@@ -125,7 +128,7 @@ export class SourceSimulation {
   attach(bodyId, worldPointArray) {
     const body = this.bodies.get(bodyId);
     if (!body || !Array.isArray(worldPointArray) || worldPointArray.length !== 3 || !worldPointArray.every(Number.isFinite)) return false;
-    if (this.creation.form === 'orb') {
+    if (['orb','clay'].includes(this.creation.form)) {
       this._event('hook-failed', { reason: 'Shape the ball into a hook or lasso before casting.' });
       return false;
     }
@@ -312,12 +315,13 @@ export class SourceSimulation {
     }
     this.practice = { mode: null, status: 'idle', startedAt: this.elapsed };
     this._lastSlamAt = -Infinity;
+    this.combat.reset();
     this.world.broadphase.dirty = true;
     this._event('practice-reset');
   }
 
   startPractice(mode) {
-    if (!['rival', 'rescue', 'breakout'].includes(mode)) return false;
+    if (!['rival', 'rescue', 'breakout', 'melee'].includes(mode)) return false;
     const actorId = mode === 'rescue' ? 'practice-ally' : 'practice-rival';
     const actor = this.actors.get(actorId);
     if (!actor) return false;
@@ -325,7 +329,7 @@ export class SourceSimulation {
     this.release('practice-start');
     this.meditating = false;
     this.practice = { mode, status: 'active', startedAt: this.elapsed };
-    this.player.position.set(...(mode === 'rescue' ? [11, 4.7, 0] : [-7, 1.2, 13]));
+    this.player.position.set(...(mode === 'rescue' ? [11, 4.7, 0] : mode === 'melee' ? [-7, 1.2, 7.1] : [-7, 1.2, 13]));
     this.player.velocity.setZero();
     this.player.force.setZero();
     this.player.previousPosition.copy(this.player.position);
@@ -339,6 +343,7 @@ export class SourceSimulation {
       actor.body.interpolatedPosition.copy(actor.body.position);
       actor.body.aabbNeedsUpdate = true;
     }
+    if (mode === 'melee') { this.combat.equip('sword'); this.combat.counterAt = this.elapsed + 3; }
     if (mode === 'breakout') {
       this.incomingTether = {
         actorId: actor.id, length: 6, tension: 0, strength: this.reinforcement,
@@ -440,7 +445,7 @@ export class SourceSimulation {
         }
       }
       let targetX = 0;
-      if (actor.role === 'rival' && this.practice.mode !== 'breakout') targetX = Math.cos((this.elapsed - this.practice.startedAt) * 0.65) * 1.3;
+      if (actor.role === 'rival' && !['breakout', 'melee'].includes(this.practice.mode)) targetX = Math.cos((this.elapsed - this.practice.startedAt) * 0.65) * 1.3;
       if (actor.role === 'ally' && this.practice.mode === 'rescue' && !actor.rescued && this.elapsed - this.practice.startedAt > 2.5) targetX = -1.3;
       if (actor.grounded) {
         const maxChange = (captured ? 3 : 10) * dt;
@@ -521,6 +526,7 @@ export class SourceSimulation {
         }
       }
       if (this.source > 0.1) this._exhausted = false;
+      this.combat.step(FIXED_STEP);
       this._stepActors(FIXED_STEP);
       this._move(FIXED_STEP, input);
       const wasGrounded = this.grounded;
@@ -541,7 +547,7 @@ export class SourceSimulation {
       if (groundContact) {
         if (!wasGrounded && this._impactSpeed < -12) {
           const damage = Math.min(100, (-this._impactSpeed - 12) * 4);
-          this.health = Math.max(0, this.health - damage);
+          this.combat.damagePlayer(damage, 'fall');
           this._event('fall-damage', { damage });
         }
         this._impactSpeed = 0;
@@ -595,6 +601,7 @@ export class SourceSimulation {
   getSnapshot() {
     const anchor = this.anchorPosition();
     return {
+      combat: this.combat.snapshot(),
       practice: { ...this.practice },
       actors: [...this.actors.values()].map(actor => ({ ...actorSnapshot(actor), escapeProgress: actor.escapeProgress / (this.hook?.bodyId === actor.id ? this.hook.requiredPresses : escapeThreshold(this.reinforcement)) })),
       incomingTether: this.incomingTether ? {

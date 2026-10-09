@@ -189,3 +189,39 @@ locomotion, commands, and mounting. Multiplayer needs trusted simulation and
 validation, replication, ownership, reconciliation, and save policy. The local
 snapshot/input boundaries provide useful starting points; neither system is
 implemented by those boundaries alone.
+
+
+## Solid clay and combat extension (0.3)
+
+`clay.js` owns a 28³ scalar density grid encoded as a bounded hex string. Optional
+`solid: { data, purpose }` is present when `form: 'clay'`; existing version-2
+records and storage keys remain compatible. No renderer objects enter the saved
+definition. `clay-mesh.js` extracts the surface with Three.js MarchingCubes and
+releases temporary geometry. `clay-workshop.js` owns a separate meditation dialog,
+raycast brushes, symmetry, 24-state undo/redo, fitting guides and controller brush
+controls. Every mutation uses the ordinary creation callback and autosave/library.
+Drawing a tether and sculpting a solid are separate editors; choosing a purpose
+never infers behavior from appearance. The grid is coarse and volume is not conserved.
+
+`combat.js` owns deliberate aura activation/upkeep, selected equipment, timed
+three-hit melee, stamina costs, one-hit-per-target-per-swing tracking, target
+range/facing/height and intervening-solid checks, created equipment lifecycle,
+protection and practice counters. It runs inside the fixed simulation step. Melee
+uses a forward volume during its active window, not exact animated blade collision.
+Armor currently has a fixed melee reduction, independent of coverage or shape.
+Solid manifestations and aura consume the same reserve as tethers. They are never
+serialized as active state. Physical sword selection is session-only; new loads
+start in meditation. Library data remains the durable design record.
+
+`combat-view.js` consumes combat snapshots/events. It renders a physical sword,
+procedural shoulder/torso/leg animation, white aura and blade trail, moving solid
+leg armor, equipped solid sword, short synthesized sounds and bounded floating
+damage numbers. It cannot award damage. Armor deformation is a basic leg bend,
+not cloth simulation or an automatically generated skeleton. `practice-view.js`
+shows the rival counter windup; actual counter damage belongs to `combat.js`.
+
+New controls: C/B spikes (B closes menus), V/D-pad down cycles equipment,
+N/LT+X manifests solids, 5/LT+D-pad left starts melee practice. RT and mouse left
+use the selected equipment. Keyboard F remains a dedicated tether cast. T/X still
+lifts/slams caught rivals; LT+X takes precedence over X. D-pad down no longer resets
+practice in the field; keyboard 4/button or scenario shortcuts reset it.

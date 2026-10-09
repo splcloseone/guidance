@@ -1,3 +1,4 @@
+import { normalizeClay } from './clay.js';
 /**
  * Serializable creation definitions. No renderer or simulation objects belong here.
  * The historical storage key is retained so existing installations upgrade in place.
@@ -48,7 +49,7 @@ const clamp = (value, min, max, fallback) => {
 };
 
 function normalizeShape(value, form) {
-  const defaults = SHAPES[form];
+  const defaults = SHAPES[form] || SHAPES.orb;
   let points = Array.isArray(value?.points) ? value.points
     .filter(point => Array.isArray(point) && point.length === 3 && point.every(coordinate => typeof coordinate === 'number' && Number.isFinite(coordinate)))
     .slice(0, 12)
@@ -66,7 +67,7 @@ function normalizeShape(value, form) {
 
 export function normalizeCreation(value = {}) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) value = {};
-  const form = Object.hasOwn(SHAPES, value.form) ? value.form : DEFAULT_CREATION.form;
+  const form = (value.form === 'clay' || Object.hasOwn(SHAPES, value.form)) ? value.form : DEFAULT_CREATION.form;
   return {
     version: CREATION_VERSION,
     id: typeof value.id === 'string' && /^[\w-]{1,80}$/.test(value.id) ? value.id : DEFAULT_CREATION.id,
@@ -78,6 +79,7 @@ export function normalizeCreation(value = {}) {
     strength: clamp(value.strength, 1, 5, DEFAULT_CREATION.strength),
     hookSize: clamp(value.hookSize, .6, 1.6, DEFAULT_CREATION.hookSize),
     shape: normalizeShape(value.shape, form),
+    ...(form === 'clay' ? { solid: normalizeClay(value.solid) } : {}),
   };
 }
 
