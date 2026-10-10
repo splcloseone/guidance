@@ -1,9 +1,9 @@
 # The Source — continuation checkpoint
 
-Updated 2026-10-09. Read README.md, AGENTS.md, docs/ARCHITECTURE.md and DESIGN.md
+Updated 2026-10-10. Read README.md, AGENTS.md, docs/ARCHITECTURE.md and DESIGN.md
 before continuing. Preserve the earlier release evidence below.
 
-## Prototype 3 (0.4.0) — implementation checkpoint, not published yet
+## Prototype 3 (0.4.0) — verified, awaiting publication
 
 The user authorized building on 2026-10-09. Implemented four saved loadout slots,
 independent armor/weapon upkeep, four-input sword combo with heavy finisher,
@@ -12,23 +12,30 @@ struggle, combat meditation/edit/reset lock persisted across reload, in-world
 meditation orb, white body/weapon outline aura, tool presets and touch controls.
 Old creation/library keys remain intact. Tool life skills are labeled planned.
 
-Initial verification: all 60 Node tests passed (including captured hook settings); new Prototype 3 desktop and mobile
-browser flows passed with no console/page errors. Screenshots reviewed for the
-world orb, white aura, portrait combo and landscape touch layout. Tests include
-keyboard combo, synthetic controller slots/dismiss/attack, simultaneous touch
-movement and look, combat lock and loadout persistence. Physical devices untested.
+Implemented and backed up at 20cbd2d, with handoff/docs at 7061962. Final review
+caught same-ID variants incorrectly sharing active equipment; normalization now
+repairs duplicate slot IDs without changing the editor/library. Two new unit
+regressions cover different power/scale/cost/dismissal and legacy duplicate saves.
+The latest unit run passes all 62 tests, with no failures or skips.
 
-Implementation checkpoint is committed and pushed to source-prototype at 20cbd2d.
-Captured hook settings are fixed and unit-tested. Legacy creation, sculpt and
-combatClay browser suites pass. Practice requires rerunning after fixing its
-keyboard focus (the test left focus on a checkbox before attempting to walk).
-README, architecture, continuation and packaging instructions now describe slots
-and touch. The production package builds; independent ZIP integrity/HTML equality
-checks pass. No 0.4 release is public yet.
+Browser verification completed: legacy creation, sculpt, combatClay, practice,
+functional, hook and controller suites pass. New desktop and phone flows pass,
+including combo, white aura, orb visibility, saved loadout/reload, combat lock,
+controller selection/dismissal, touch escape and simultaneous touch movement/look.
+Standard controller escape took six deliberate taps; holding counts only once.
+Test-only fixes: restore canvas focus after a checkbox; avoid an old click point
+now covered by the slot bar; await touch input processing before another escape
+press. No page/console errors in passing suites. Physical devices are untested.
 
-Next: rerun practice, final mobile escape flow and original browser regressions;
-validate standalone, commit documentation/test changes, then publish and verify
-public delivery. Vite may already serve port 5173; test before starting another.
+Final validation passed: dedicated same-design variants UI regression; rebuilt
+standalone at /guidance/ without network assets, including rendered pixels,
+keyboard movement, guide, autosave/reload, prepared armor and real sword damage.
+The final ZIP passes independent integrity and exact HTML equality checks.
+
+Final HTML SHA-256: daacdbef153db975998aa705eb397fafaea68ef1c13b449a1bfb52742cd2f5e7
+
+Next: commit/push, publish gh-pages, and verify public delivery. All implementation
+and validation work is complete; no 0.4 release is public yet.
 
 ## 0.3 — solid clay, white aura and sword combat
 
@@ -203,7 +210,7 @@ The cloud environment configuration already stores tested install_script and
 start_skill, plus api.github.com and splcloseone.github.io network additions.
 An environment snapshot and the game's public website are separate publications.
 
-## Deliberate limits
+## Earlier limits (0.2; superseded by later checkpoints)
 
 This is a local training lab, not multiplayer. Character bodies are upright boxes;
 the player body is a sphere. Capture uses a raycast hit and physical tether, not

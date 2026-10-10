@@ -26,7 +26,8 @@ export async function test({page,out}) {
  assert.equal(await page.locator('#reach').inputValue(),'36');
  results.persistence=true;
  if(await open()) await page.locator('#enter-ground').click();
- await page.locator('#game-canvas').count().then(async n=>{if(n)await page.locator('#game-canvas').click({position:{x:720,y:600}});});
+ // Give movement input the canvas focus; the new saved-slot bar occupies the old click coordinates.
+ await page.locator('#game-canvas').focus();
  const snapshot=()=>page.evaluate(()=>window.__SOURCE_DEBUG__.snapshot());
  const before=await snapshot();
  await page.keyboard.down('KeyW');await page.waitForTimeout(700);await page.keyboard.up('KeyW');

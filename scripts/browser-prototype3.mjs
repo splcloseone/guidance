@@ -6,16 +6,40 @@ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'
 const out='test-results/prototype3',report={};await mkdir(out,{recursive:true});
 const url=process.env.APP_URL||'http://127.0.0.1:5173';
 async function run(name,options,fn){
+ if(process.env.BROWSER_SUITE&&process.env.BROWSER_SUITE!==name)return;
  const context=await browser.newContext(options),page=await context.newPage(),errors=[];page.setDefaultTimeout(45000);
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
  await installGamepad(page);
  try{await page.goto(url,{waitUntil:'networkidle'});await page.waitForFunction(()=>window.__SOURCE_DEBUG__);await fn(page,context);assert.deepEqual(errors,[]);report[name]={passed:true,errors};console.log(`PASS prototype3/${name}`);}
- catch(e){report[name]={passed:false,error:e.stack,errors};await page.screenshot({path:`${out}/${name}-failure.png`});console.error(e);process.exitCode=1;}
+ catch(e){report[name]={passed:false,error:e.stack,errors,state:await snap(page).catch(()=>null)};await page.screenshot({path:`${out}/${name}-failure.png`});console.error(e);process.exitCode=1;}
  finally{await context.close();await writeFile(`${out}/report.json`,JSON.stringify(report,null,2));}
 }
 const snap=page=>page.evaluate(()=>window.__SOURCE_DEBUG__.snapshot());
 async function pad(page,index,predicate){await page.evaluate(i=>window.__TEST_GAMEPAD__.button(i,true),index);await page.waitForFunction(predicate);await page.evaluate(i=>window.__TEST_GAMEPAD__.button(i,false),index);await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));}
 try{
+ await run('variants',{viewport:{width:1280,height:800}},async page=>{
+  const range=async(id,value)=>{await page.locator(id).evaluate((e,v)=>{e.value=String(v);e.dispatchEvent(new Event('input',{bubbles:true}));},value);};
+  await page.locator('[data-catalog=sword]').click();
+  await range('#strength',1);await range('#hook-size',.6);
+  await page.locator('#slot-destination').selectOption('2');await page.locator('#assign-slot').click();
+  await range('#strength',5);await range('#hook-size',1.6);
+  await page.locator('#slot-destination').selectOption('3');await page.locator('#assign-slot').click();
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('the-source.loadout.v1')));
+  assert.notEqual(saved.slots[2].creation.id,saved.slots[3].creation.id,'prepared variants have separate identities');
+  await page.reload();await page.waitForFunction(()=>window.__SOURCE_DEBUG__);
+  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('the-source.loadout.v1'))),saved);
+  await page.locator('#enter-ground').click();await page.keyboard.press('Digit3');
+  await page.waitForFunction(()=>window.__SOURCE_DEBUG__.snapshot().combat.weaponDefinition?.strength===1);
+  assert.equal((await snap(page)).combat.weaponDefinition.hookSize,.6);
+  const reserve=(await snap(page)).source;
+  await page.keyboard.press('Digit4');
+  await page.waitForFunction(()=>window.__SOURCE_DEBUG__.snapshot().combat.weaponDefinition?.strength===5);
+  const strong=await snap(page);assert.equal(strong.combat.weaponDefinition.hookSize,1.6);
+  assert.ok(reserve-strong.source>=12,'the replacement pays its own activation');
+  const slot=await page.locator('[data-slot="2"]').boundingBox();
+  await page.mouse.move(slot.x+slot.width/2,slot.y+slot.height/2);await page.mouse.down();await page.waitForTimeout(600);await page.mouse.up();
+  assert.equal((await snap(page)).combat.weaponDefinition?.id,saved.slots[3].creation.id,'holding the inactive copy cannot dismiss the active copy');
+ });
  await run('desktop',{viewport:{width:1440,height:1000}},async page=>{
   await pixelStats(page,'#game-canvas');assert.equal(await page.evaluate(()=>window.__SOURCE_DEBUG__.visuals().orb),true);
   await page.locator('[data-catalog=scythe]').click();await page.locator('#slot-destination').selectOption('3');await page.locator('#assign-slot').click();
@@ -70,7 +94,10 @@ try{
   while((await snap(page)).incomingTether&&taps<15){
     const elapsed=await page.evaluate(()=>window.__SOURCE_DEBUG__.simulation.elapsed);
     await page.waitForFunction(t=>window.__SOURCE_DEBUG__.simulation.elapsed>t+.13,elapsed);
+    const accepted=(await snap(page)).incomingTether?.acceptedPresses;
+    if(accepted===undefined)break;
     await page.locator('#touch-struggle').tap();taps++;
+    await page.waitForFunction(n=>{const t=window.__SOURCE_DEBUG__.snapshot().incomingTether;return !t||t.acceptedPresses>n;},accepted);
   }
   assert.equal((await snap(page)).incomingTether,null,'touch taps break the incoming tether');
   assert.ok(taps>=4&&taps<=12,'touch breakout takes a short sequence of deliberate taps');

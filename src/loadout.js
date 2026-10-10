@@ -19,9 +19,17 @@ export function defaultLoadout(){return [
   {kind:'creation',creation:catalogCreation('pants')},{kind:'creation',creation:catalogCreation('sword')},
 ];}
 export function normalizeLoadout(value){
+  const ids=new Set();
   return Array.from({length:4},(_,i)=>{
     const slot=value?.[i];
-    if(slot?.kind==='creation' && slot.creation && typeof slot.creation==='object')return {kind:'creation',creation:normalizeCreation(slot.creation)};
+    if(slot?.kind==='creation' && slot.creation && typeof slot.creation==='object'){
+      const creation=normalizeCreation(slot.creation);
+      // Editor revisions share an ID, but prepared slots are independent copies.
+      // Repair legacy duplicates here as well as newly assigned variants.
+      while(ids.has(creation.id))creation.id=creationFromPreset('orb').id;
+      ids.add(creation.id);
+      return {kind:'creation',creation};
+    }
     return {kind:['physical','fists'].includes(slot?.kind)?slot.kind:'empty'};
   });
 }

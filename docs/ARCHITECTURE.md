@@ -229,7 +229,9 @@ shows the rival counter windup; actual counter damage belongs to `combat.js`.
 `loadout.js` normalizes four slots containing empty, fists, physical sword, or a
 complete creation copy. It supplies defaults, catalog presets and bounded storage.
 `loadout-ui.js` adapts meditation assignment and field selection/hold-to-dismiss.
-Slot copies are independent of the working editor and library: editing a saved
+Normalization assigns a fresh ID to duplicate slot identities, including older
+persisted same-ID variants. Non-colliding IDs remain stable. Slot copies are
+independent of the working editor and library: editing a saved
 ID does not mutate a live creation. `setLoadout` requires meditation outside combat.
 
 `selectSlot` equips a prepared weapon or manifests its definition. Armor and
