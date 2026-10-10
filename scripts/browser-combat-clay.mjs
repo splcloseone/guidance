@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { disengage } from './browser-utils.mjs';
 import { resolve } from 'node:path';
 export async function test({ page, out }) {
   const pad=async(index,predicate)=>{await page.evaluate(i=>window.__TEST_GAMEPAD__.button(i,true),index);await page.waitForFunction(predicate);await page.evaluate(i=>window.__TEST_GAMEPAD__.button(i,false),index);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));};
@@ -25,10 +26,11 @@ export async function test({ page, out }) {
   await page.locator('#clay-close').click();await page.locator('#save-creation').click();
   await page.reload();await page.waitForFunction(()=>window.__SOURCE_DEBUG__);
   assert.equal((await snapshot()).creation.solid.data,pants,'solid survives autosave/reload');
+  await page.locator('#slot-destination').selectOption('2');await page.locator('#assign-slot').click();
   await page.locator('#enter-ground').click();
   await page.keyboard.press('Digit5');
   await page.waitForFunction(()=>window.__SOURCE_DEBUG__.snapshot().combat.weapon==='sword');
-  await page.keyboard.press('KeyN');await page.keyboard.press('KeyC');
+  await page.keyboard.press('Digit3');await page.keyboard.press('KeyC');
   await page.waitForFunction(()=>{const c=window.__SOURCE_DEBUG__.snapshot().combat;return c.wearing&&c.spiking;});
   // Freeze only the scheduled counter so this check observes outgoing hit feedback.
   await page.evaluate(()=>window.__SOURCE_DEBUG__.simulation.combat.counterAt=Infinity);
@@ -42,20 +44,22 @@ export async function test({ page, out }) {
   assert.ok(Math.abs((await snapshot()).health-94.6)<.01,'armor and aura reduce a real counter hit');
   await page.waitForSelector('.damage-number.protected');
   await page.evaluate(()=>window.__SOURCE_DEBUG__.simulation.combat.counterAt=Infinity);
-  // Controller B spikes without opening meditation; D-pad down changes equipment.
-  await page.evaluate(()=>window.__TEST_GAMEPAD__.button(1,true));await page.waitForFunction(()=>!window.__SOURCE_DEBUG__.snapshot().combat.spiking);await page.evaluate(()=>window.__TEST_GAMEPAD__.button(1,false));assert.equal((await snapshot()).meditating,false);
-  await page.waitForFunction(()=>!window.__SOURCE_DEBUG__.snapshot().combat.attack);
-  await pad(13,()=>window.__SOURCE_DEBUG__.snapshot().combat.weapon==='tether');
-  await pad(13,()=>window.__SOURCE_DEBUG__.snapshot().combat.weapon==='fists');
-  // Start a fresh melee scenario via controller chord, then RT lands an ordinary sword hit.
-  await page.evaluate(()=>window.__TEST_GAMEPAD__.button(6,true));await pad(14,()=>window.__SOURCE_DEBUG__.snapshot().combat.weapon==='sword');await page.evaluate(()=>window.__TEST_GAMEPAD__.button(6,false));
-  await page.waitForFunction(()=>window.__SOURCE_DEBUG__.snapshot().combat.weapon==='sword');
+  // Controller B changes aura; selecting another slot keeps independent armor.
+  await pad(1,()=>!window.__SOURCE_DEBUG__.snapshot().combat.spiking);
+  assert.equal((await snapshot()).meditating,false);
+  await disengage(page);await page.locator('#practice-melee').click();
   await page.evaluate(()=>window.__SOURCE_DEBUG__.simulation.combat.counterAt=Infinity);
+  await pad(15,()=>window.__SOURCE_DEBUG__.snapshot().combat.weapon==='sword');
   await pad(7,()=>!!window.__SOURCE_DEBUG__.snapshot().combat.attack);
   await page.waitForFunction(()=>window.__SOURCE_DEBUG__.snapshot().actors.find(a=>a.id==='practice-rival').health===80);
-  await page.keyboard.press('KeyM');await page.waitForFunction(()=>window.__SOURCE_DEBUG__.snapshot().meditating);assert.equal((await snapshot()).combat.spiking,false);assert.equal((await snapshot()).combat.wearing,false);
-  await page.locator('#open-clay').click();await page.locator('#clay-sword').click();await page.locator('#clay-close').click();await page.locator('#enter-ground').click();
-  await page.keyboard.press('KeyN');await page.waitForFunction(()=>window.__SOURCE_DEBUG__.snapshot().combat.manifested);assert.equal((await snapshot()).combat.manifested,true);assert.equal((await snapshot()).combat.weapon,'source-sword');
+  await disengage(page);await page.keyboard.press('KeyM');
+  await page.waitForFunction(()=>window.__SOURCE_DEBUG__.snapshot().meditating);
+  assert.equal((await snapshot()).combat.spiking,false);assert.equal((await snapshot()).combat.wearing,false);
+  await page.locator('#open-clay').click();await page.locator('#clay-sword').click();await page.locator('#clay-close').click();
+  await page.locator('#slot-destination').selectOption('3');await page.locator('#assign-slot').click();
+  await page.locator('#enter-ground').click();
+  await page.keyboard.press('Digit4');await page.waitForFunction(()=>window.__SOURCE_DEBUG__.snapshot().combat.manifested);
+  assert.equal((await snapshot()).combat.weapon,'source-sword');
   await page.screenshot({path:resolve(out,'created-sword.png')});
   return {pointerSculpt:true,undoRedo:true,solidPersistence:true,wearableArmor:true,physicalSwordDamage:30,controllerSwordDamage:20,createdSword:true};
 }

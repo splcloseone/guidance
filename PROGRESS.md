@@ -12,15 +12,23 @@ struggle, combat meditation/edit/reset lock persisted across reload, in-world
 meditation orb, white body/weapon outline aura, tool presets and touch controls.
 Old creation/library keys remain intact. Tool life skills are labeled planned.
 
-Initial verification: all 59 Node tests passed; new Prototype 3 desktop and mobile
+Initial verification: all 60 Node tests passed (including captured hook settings); new Prototype 3 desktop and mobile
 browser flows passed with no console/page errors. Screenshots reviewed for the
 world orb, white aura, portrait combo and landscape touch layout. Tests include
 keyboard combo, synthetic controller slots/dismiss/attack, simultaneous touch
 movement and look, combat lock and loadout persistence. Physical devices untested.
 
-Next: verify the captured-projectile settings fix; update legacy browser checks
-for prepared slots and combat restrictions; finish documentation, standalone
-verification and publication. No 0.4 release is public yet. Vite may run on5173.
+Implementation checkpoint is committed and pushed to source-prototype at 20cbd2d.
+Captured hook settings are fixed and unit-tested. Legacy creation, sculpt and
+combatClay browser suites pass. Practice requires rerunning after fixing its
+keyboard focus (the test left focus on a checkbox before attempting to walk).
+README, architecture, continuation and packaging instructions now describe slots
+and touch. The production package builds; independent ZIP integrity/HTML equality
+checks pass. No 0.4 release is public yet.
+
+Next: rerun practice, final mobile escape flow and original browser regressions;
+validate standalone, commit documentation/test changes, then publish and verify
+public delivery. Vite may already serve port 5173; test before starting another.
 
 ## 0.3 — solid clay, white aura and sword combat
 

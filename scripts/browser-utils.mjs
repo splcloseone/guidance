@@ -22,3 +22,15 @@ export async function pixelStats(page, selector='canvas') {
   assert(max-min>40,`Expected nonempty rendered image; brightness range ${max-min}`);
   return{width:png.width,height:png.height,sampledColors:colors.size,minChannel:min,maxChannel:max};
 }
+
+// Leave actual combat before changing practice scenarios. Never bypass the lock.
+export async function disengage(page) {
+  if (!await page.evaluate(()=>window.__SOURCE_DEBUG__.snapshot().inCombat)) return;
+  await page.waitForFunction(()=>!window.__SOURCE_DEBUG__.snapshot().combat.attack);
+  await page.locator('#game-canvas').focus();
+  await page.keyboard.press('Digit1'); await page.keyboard.press('KeyE');
+  await page.keyboard.down('KeyS');
+  try { await page.waitForFunction(()=>{const s=window.__SOURCE_DEBUG__.snapshot(),a=s.actors.find(a=>a.id==='practice-rival');return Math.hypot(a.position[0]-s.player.position[0],a.position[2]-s.player.position[2])>7;},null,{timeout:45000}); }
+  finally { await page.keyboard.up('KeyS'); }
+  await page.waitForFunction(()=>!window.__SOURCE_DEBUG__.snapshot().inCombat,null,{timeout:45000});
+}

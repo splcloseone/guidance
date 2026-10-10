@@ -1,7 +1,8 @@
 # Play and publish
 
 The public prototype is hosted on [GitHub Pages](https://splcloseone.github.io/guidance/).
-Use desktop Chrome or Edge with WebGL2 and a keyboard/mouse or standard controller.
+Use a current WebGL2 browser with keyboard/mouse, a standard controller, or touch.
+Landscape is recommended on phones; physical device testing is still needed.
 The source checkout may include work newer than the published game; PROGRESS.md
 records the verified release status.
 
@@ -35,5 +36,5 @@ The helper does not enable Pages or change repository settings.
 
 Saves belong to the browser and website origin. Updating the site at its existing
 URL preserves compatible local saves. A downloaded file uses separate storage;
-moving it or clearing browser data may lose access to those saves. Phone/tablet
-touch controls are not implemented.
+moving it or clearing browser data may lose access to those saves. Prototype 3 includes phone/tablet touch controls. Local browser saves are not
+cloud or account saves.

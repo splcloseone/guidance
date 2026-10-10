@@ -40,7 +40,45 @@ await mkdir(resolve(root, 'releases/web'), { recursive: true });
 await writeFile(resolve(root, 'releases/web/index.html'), html);
 await writeFile(resolve(root, 'releases/web/LICENSES.txt'), licenseText);
 await writeFile(resolve(root, 'releases/web/.nojekyll'), '');
-const instructions = `THE SOURCE — clay, aura and combat practice\n\nOpen The-Source.html in desktop Chrome or Edge.\n\nNEW: Open solid clay lab in meditation. Sculpt one ball using pull, add,\ncarve, smooth and flatten. Optional pants/sword guides remain editable.\nChoose an armor or sword purpose, finish, save and enter the ground.\nN / LT+X manifests the solid. C / controller B spikes your white aura.\n5 / LT+D-pad left starts sword practice. LMB / RT attacks with selected\nequipment; V / D-pad down cycles tether, fists and physical sword.\nArmor and created swords use fixed combat stats in this first test.\n\nTETHER WORKSHOP\nChoose a ball, hook, lasso, or claw preset in meditation. Open Shape by hand\nto edit its points; shaping assistance is optional. Description assistance\nunderstands the supported forms, colors and modifiers shown in the workshop.\nSave creation adds your design to the local library.\n\nEnter proving ground, then choose a practice from the panel:\n1: catch a rival | 2: rescue an ally | 3: break a tether | 4: reset practice\nWASD: move | right mouse drag: look | Space: jump | Shift: sprint\nF: cast tether | left click: use selected equipment | E: release | Q / R: reel in / out\nT: lift a caught rival, then press again to slam\nB: repeatedly press to escape an incoming tether; holding does not repeat\nM: meditation | G: map | H: complete controls, including controller bindings\n\nThicker tethers resist breakout and pull harder, but use more of the Source.\nHealth damage from slams is based on actual impacts with the scenery.\n\nDesign edits and safe player state autosave in this browser. Keep the file\nin the same location and use the same browser. Clearing browser storage\nremoves saves. Saved creations stay; active tethers and practice scenarios\nreset on reload. Save creation stores up to 20 designs without silently\ndeleting older designs when full.\n\nThis is a local prototype with practice characters. Multiplayer, free-form\ncreatures, touch controls, and unrestricted text-to-creation are not included.\nController input is implemented; individual hardware models are not verified.\nNo installation or network connection is needed after downloading.\n`;
+const instructions = `THE SOURCE — PROTOTYPE 3
+
+Open The-Source.html in a current WebGL2 browser. For phones, the hosted
+link is easiest: https://splcloseone.github.io/guidance/?v=0.4.0
+
+Enter the proving ground. Choose Hook -> 4-hit combo from Practice.
+Slot 1 casts a hook that pulls an opponent to you. Select slot 2, then
+attack four times: three strikes followed by a heavy finisher.
+Spike surrounds your body and weapon with white aura.
+
+KEYBOARD: WASD move, right-drag look, Space jump, Shift sprint.
+1-4 slots | left click attack/use | F dedicated hook cast | C spike
+E dismiss selected | Q/R toggle reel/payout outside combat | T lift/slam
+B repeated taps to escape | M meditate | G map | H complete guide.
+
+CONTROLLER: sticks move/look, D-pad left/right/up/down selects slots,
+RT attack, B spike, LB dismiss, LT toggle reel, RB payout, A jump,
+X lift/slam, repeated R3 escape, Y meditate, View map, Menu guide.
+
+TOUCH: stick moves, drag world to look, tap saved slots and buttons.
+Hold a slot to dismiss it. Adjust button size/side in meditation.
+Landscape recommended. Real device performance still needs testing.
+
+MEDITATION: Choose a preset, customize scale/power/color, then Assign &
+save slot. Saved slots are separate from the working design/library.
+Save creation stores up to 20 designs. Optional clay/curve editing remains.
+Armor can stay active alongside your weapon; both cost reserve upkeep.
+Tool presets have combat traits; mining/farming/harvesting are planned.
+Combat blocks meditation and practice resets. Disengage first.
+
+Designs, assigned slots and safe player state save in this browser.
+Keep the same site/file location and browser. Clearing storage removes
+saves. Active creations disappear on reload; remaining combat lock persists.
+
+Local practice only: no online multiplayer, arbitrary creature creation,
+world travel, parrying or finished progression. Controller and phone browser
+input is tested synthetically; specific hardware is not certified.
+No network assets are needed once this file is loaded.
+`;
 await writeFile(resolve(root, 'releases/START-HERE.txt'), instructions);
 await writeFile(resolve(root, 'releases/The-Source-Play.zip'), releaseZip([
   ['The-Source.html', html], ['START-HERE.txt', instructions], ['LICENSES.txt', licenseText],

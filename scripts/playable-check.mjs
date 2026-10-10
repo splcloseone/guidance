@@ -24,7 +24,7 @@ const address = `http://127.0.0.1:${server.address().port}${playablePath}`;
 try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await context.newPage();
-  page.setDefaultTimeout(15000);
+  page.setDefaultTimeout(30000);
   page.on('pageerror', error => errors.push(error.message));
   page.on('request', request => { if (/^https?:/.test(request.url())) network.push(request.url()); });
   // Managed Chromium prohibits file://. Serve only the exact standalone file,
@@ -54,8 +54,9 @@ try {
   await page.locator('#open-clay').click();await page.locator('#clay-pants').click();
   await page.locator('#clay-close').click();await page.locator('#save-creation').click();
   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('the-source.creation.v1'))?.solid?.purpose==='armor');
+  await page.locator('#slot-destination').selectOption('2');await page.locator('#assign-slot').click();
   await page.locator('#enter-ground').click();await page.locator('#practice-melee').click();
-  await page.keyboard.press('KeyN');await page.keyboard.press('KeyC');
+  await page.keyboard.press('Digit3');await page.keyboard.press('KeyC');
   await page.waitForFunction(()=>document.getElementById('combat-status').textContent.includes('WHITE AURA')&&document.getElementById('combat-status').textContent.includes('armor active'));
   await page.locator('#game-canvas').click({position:{x:640,y:520}});
   await page.waitForFunction(()=>Number(document.getElementById('target-health').value)<100);

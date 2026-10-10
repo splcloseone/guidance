@@ -50,6 +50,7 @@ observable behavior rather than duplicating the implementation.
 With Vite running, the new browser scenarios are:
 
 ```sh
+npm run test:prototype3
 npm run test:core
 ```
 
@@ -81,7 +82,9 @@ is excluded from the production build. Do not make product features depend on it
 
 Controller automation uses the standard Gamepad API with synthetic input. Test
 real hardware separately before asserting compatibility with specific devices.
-The text/color fields use native browser inputs, and touch gameplay is absent.
+The text/color fields use native browser inputs. Prototype 3 tests phone portrait
+and landscape controls with browser touch events; real device performance and
+physical controller compatibility remain separate checks.
 
 Record exact outcomes, known failures, and any environmental limitation in
 `PROGRESS.md`. Documentation commands are instructions, not evidence of a pass.
@@ -97,13 +100,13 @@ Preserve these contracts:
 - The historical active-design key contains the newer schema. Add a migration or
   normalization path before changing field meanings or keys, and retain fixtures
   from earlier saves.
-- One normalized definition feeds both preview and manifestation. Keep scene
+- A normalized definition feeds preview; saved slot copies feed manifestation. Keep scene
   objects and physics bodies out of JSON definitions.
 - The simulation owns reserve costs, damage, attachment permission, and escape.
   UI adapters display these results rather than computing competing rules.
 - If a property is only visual, say so. New curved appearance does not imply
   physical snagging, rope wrapping, articulation, or new capabilities.
-- When adding an action, update keyboard/controller input, on-screen help, README,
+- When adding an action, update keyboard/controller/touch input, on-screen help, README,
   and a meaningful behavior test together.
 - Dispose replaced geometries/materials and detach listeners when introducing
   re-created views. Preserve the workshop's layout and existing play loop.

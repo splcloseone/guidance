@@ -63,6 +63,17 @@ try{
   for(let i=0;i<3;i++){await page.waitForFunction(i=>{const a=window.__SOURCE_DEBUG__.snapshot().combat.attack;return a?.index===i&&a.t>=.1;},i);await page.locator('#touch-attack').tap();}
   await page.waitForFunction(()=>window.__SOURCE_DEBUG__.snapshot().actors.find(a=>a.id==='practice-rival').health<=0);
   await page.screenshot({path:`${out}/phone-combo.png`});
+  await page.waitForFunction(()=>!window.__SOURCE_DEBUG__.snapshot().inCombat);
+  await page.locator('#practice-menu-toggle').tap();await page.locator('#practice-breakout').tap();
+  await page.waitForFunction(()=>!!window.__SOURCE_DEBUG__.snapshot().incomingTether);
+  let taps=0;
+  while((await snap(page)).incomingTether&&taps<15){
+    const elapsed=await page.evaluate(()=>window.__SOURCE_DEBUG__.simulation.elapsed);
+    await page.waitForFunction(t=>window.__SOURCE_DEBUG__.simulation.elapsed>t+.13,elapsed);
+    await page.locator('#touch-struggle').tap();taps++;
+  }
+  assert.equal((await snap(page)).incomingTether,null,'touch taps break the incoming tether');
+  assert.ok(taps>=4&&taps<=12,'touch breakout takes a short sequence of deliberate taps');
   const cdp=await context.newCDPSession(page),r=await page.locator('#touch-stick').boundingBox();
   const x=r.x+r.width/2,y=r.y+r.height/2,start=await snap(page);
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});

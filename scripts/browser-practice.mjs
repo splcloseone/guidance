@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { disengage } from './browser-utils.mjs';
 
 const snapshot = page => page.evaluate(() => window.__SOURCE_DEBUG__.snapshot());
 const actorFrom = (state, id) => state.actors.find(actor => actor.id === id);
@@ -19,6 +20,7 @@ async function aim(page, id) {
   await frames(page);
 }
 async function scenario(page, name) {
+  await disengage(page);
   await page.locator(`#practice-${name}`).click();
   await page.waitForFunction(() => !document.body.classList.contains('meditating'));
   await page.locator('#game-canvas').focus();
@@ -28,6 +30,7 @@ async function scenario(page, name) {
 export async function test({ page, out }) {
   const results = {};
   await page.locator('[data-preset="lasso"]').click();
+  await page.locator('#assign-slot').click();
   await page.locator('#enter-ground').click();
   await scenario(page, 'rival');
   await aim(page, 'practice-rival');
@@ -96,7 +99,7 @@ export async function test({ page, out }) {
   await scenario(page, 'breakout');
   await page.waitForFunction(() => window.__SOURCE_DEBUG__.snapshot().incomingTether);
   const starting = await snapshot(page);
-  assert(starting.incomingTether.requiredPresses >= 15, 'Escape requires sustained effort');
+  assert(starting.incomingTether.requiredPresses >= 4 && starting.incomingTether.requiredPresses <= 10, 'Escape now takes a short sequence of deliberate taps');
   // Holding R3 must not auto-repeat accepted struggle presses.
   await page.evaluate(() => window.__TEST_GAMEPAD__.button(11, true));
   await page.waitForFunction(() => window.__SOURCE_DEBUG__.snapshot().incomingTether?.acceptedPresses >= 1);
@@ -123,7 +126,7 @@ export async function test({ page, out }) {
     await frames(page);
   }
   assert.equal((await snapshot(page)).incomingTether, null, 'Repeated controller taps eventually break the tether');
-  assert(taps >= 10, 'Escape is not a one-button action');
+  assert(taps >= 3 && taps <= 15, 'Escape is easier while still requiring multiple presses');
   results.controllerEscape = { taps, requiredPresses: starting.incomingTether.requiredPresses };
   await page.screenshot({ path: `${out}/escaped.png` });
   return results;

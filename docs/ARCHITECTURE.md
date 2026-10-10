@@ -37,7 +37,7 @@ The current definition has this shape:
 {
   version: 2,
   id: 'creation-...',
-  form: 'hook', // hook | lasso | claw | orb
+  form: 'hook', // hook | lasso | claw | orb | clay
   name: 'Tethered Hook',
   color: '#8fdcc8',
   reach: 28,
@@ -101,7 +101,7 @@ commands are unsupported rather than silently converted into hooks.
 
 ## Simulation contract
 
-Construct `SourceSimulation({ obstacles, dynamicObjects, actors })` with stable,
+Construct `SourceSimulation({ obstacles, dynamicObjects, actors, loadout })` with stable,
 unique body IDs and descriptor positions/sizes. The player's collision shape is
 a sphere; practice characters use upright boxes. The current local physics step
 is 1/120 second with capped frame accumulation. This is not a verified
@@ -109,13 +109,13 @@ cross-machine deterministic lockstep simulation.
 
 Key methods:
 
-- `setCreation(definition)` normalizes settings for the next manifestation.
-- `attach(bodyId, worldPointArray)` validates the target, range, reserve, form,
+- `setCreation(definition)` normalizes the working design outside combat. Prepared slots remain separate.
+- `attach(bodyId, worldPointArray, capturedDefinition)` validates the target, range, reserve, form,
   and friendly-hook setting, then creates a tether. The application supplies the
   raycast point; physics also checks that the point belongs near the body bounds.
 - `release(reason)` dismisses the outgoing tether while retaining momentum.
 - `step(dt, input)` advances movement, vitals, costs, actor behavior, and physics.
-- `startPractice('rival' | 'rescue' | 'breakout')`, `resetPractice()`, and `reset()`
+- `startPractice('rival' | 'rescue' | 'breakout' | 'melee' | 'combo')`, `resetPractice()`, and `reset()`
   manage lab scenarios. These are practice tools, not production respawn rules.
 - `slam(directionArray)` lifts a caught rival on one activation and directs the
   subsequent slam toward a surface. The reserve of the Source is charged for each
@@ -124,7 +124,10 @@ Key methods:
   queue drained by the application for feedback.
 
 Tethers are unilateral constraints: slack produces no pushing force, while
-tension pulls both movable ends according to their mass. Reeling changes allowed
+tension pulls both movable ends according to their mass outside hostile combat.
+Hostile pulls anchor the caster and bring the opponent toward them, braking
+inward velocity on arrival so the opponent does not push the caster away.
+Reeling changes allowed
 length; releasing retains motion. Rope wrapping around obstacles, cutting a
 rendered segment with a weapon, and mesh-to-mesh hook snagging are not implemented.
 
@@ -152,8 +155,7 @@ are a later combat extension.
 The slam sequence stores a stage on the tether: held → lifted → slammed. A
 deliberate slam arms a short collision window. Damage depends on relative impact
 speed against an eligible surface, with a minimum speed, cooldown, and cap.
-Button presses alone do not deduct target health. General contact damage, melee,
-parrying, guard, and PvP balance remain outside this lab.
+Button presses alone do not deduct target health. General contact damage, parrying, guard, and PvP balance remain outside this lab.
 
 Rescue success checks physical progress toward safety, such as arresting a fall
 or pulling the ally onto the ledge. There is a reset/retry path. A practice reset
@@ -165,11 +167,13 @@ does not stand in for the full game's progression or death consequences.
 | --- | --- |
 | `the-source.creation.v1` | Active normalized version 2 design; historical key preserved. |
 | `the-source.library.v2` | Up to 20 named designs. |
-| `the-source.session.v1` | Safe grounded position, vitals, dynamic crate transforms, objectives, timestamp. |
+| `the-source.session.v1` | Safe grounded position, vitals, dynamic crate transforms, objectives, timestamp, remaining combat lock. |
+| `the-source.loadout.v1` | Version 1 envelope with four normalized slot copies. |
+| `the-source.controls.v1` | Touch button size/side and graphics preference. |
 | `the-source.practice-settings.v1` | Friendly-hook preference. |
 
 The application debounces design saves by 600 ms and checkpoints the session
-every three seconds plus lifecycle events. Reload enters meditation. Live
+every three seconds plus lifecycle events. Reload enters meditation only if its saved combat lock is zero. Live
 tethers are never serialized, and practice actors restart rather than restoring
 transforms without their health/capture/behavior state. Crates remain eligible
 for safe restoration.
@@ -191,10 +195,10 @@ snapshot/input boundaries provide useful starting points; neither system is
 implemented by those boundaries alone.
 
 
-## Solid clay and combat extension (0.3)
+## Solid clay and combat
 
 `clay.js` owns a 28³ scalar density grid encoded as a bounded hex string. Optional
-`solid: { data, purpose }` is present when `form: 'clay'`; existing version-2
+`solid: { data, purpose, kind? }` is present when `form: 'clay'`; existing version-2
 records and storage keys remain compatible. No renderer objects enter the saved
 definition. `clay-mesh.js` extracts the surface with Three.js MarchingCubes and
 releases temporary geometry. `clay-workshop.js` owns a separate meditation dialog,
@@ -204,14 +208,14 @@ Drawing a tether and sculpting a solid are separate editors; choosing a purpose
 never infers behavior from appearance. The grid is coarse and volume is not conserved.
 
 `combat.js` owns deliberate aura activation/upkeep, selected equipment, timed
-three-hit melee, stamina costs, one-hit-per-target-per-swing tracking, target
+four-hit melee, stamina costs, one-hit-per-target-per-swing tracking, target
 range/facing/height and intervening-solid checks, created equipment lifecycle,
 protection and practice counters. It runs inside the fixed simulation step. Melee
 uses a forward volume during its active window, not exact animated blade collision.
-Armor currently has a fixed melee reduction, independent of coverage or shape.
+Armor reduction depends on saved strength, independent of coverage or shape.
 Solid manifestations and aura consume the same reserve as tethers. They are never
 serialized as active state. Physical sword selection is session-only; new loads
-start in meditation. Library data remains the durable design record.
+start in meditation unless combat-locked. Library data remains the durable design record.
 
 `combat-view.js` consumes combat snapshots/events. It renders a physical sword,
 procedural shoulder/torso/leg animation, white aura and blade trail, moving solid
@@ -220,8 +224,52 @@ damage numbers. It cannot award damage. Armor deformation is a basic leg bend,
 not cloth simulation or an automatically generated skeleton. `practice-view.js`
 shows the rival counter windup; actual counter damage belongs to `combat.js`.
 
-New controls: C/B spikes (B closes menus), V/D-pad down cycles equipment,
-N/LT+X manifests solids, 5/LT+D-pad left starts melee practice. RT and mouse left
-use the selected equipment. Keyboard F remains a dedicated tether cast. T/X still
-lifts/slams caught rivals; LT+X takes precedence over X. D-pad down no longer resets
-practice in the field; keyboard 4/button or scenario shortcuts reset it.
+## Prototype 3: prepared creations, combat state and touch
+
+`loadout.js` normalizes four slots containing empty, fists, physical sword, or a
+complete creation copy. It supplies defaults, catalog presets and bounded storage.
+`loadout-ui.js` adapts meditation assignment and field selection/hold-to-dismiss.
+Slot copies are independent of the working editor and library: editing a saved
+ID does not mutate a live creation. `setLoadout` requires meditation outside combat.
+
+`selectSlot` equips a prepared weapon or manifests its definition. Armor and
+weapon definitions are separately captured by Combat, independently sustained,
+and never inferred from the current editor. Re-selecting an active ID is free.
+Dismissing a slot checks identity and cannot dismiss another slot's creation.
+Tether projectiles capture their definition on launch; attach validates/costs
+that copy even if another slot has since been selected.
+
+`combat.js` defines four timed swings with one buffered input, combo expiry, and a
+heavy fourth strike with knockback. Tool profiles tune speed, damage, reach and
+hit width; saved strength/scale tune power and reach/cost. `clay.js` supplies tool
+silhouettes. Mining/farming/harvesting behaviors are not implemented. Older solids
+without a tool kind keep their purpose and default weapon profile.
+
+Combat begins on hostile catch, melee intent or incoming damage/counter. It lasts
+8 seconds after the last hostile action, and remains active during capture/attack.
+`setMeditation`, `setLoadout`, practice/reset operations and rest recovery enforce
+this in the simulation. Blur clears controls and checkpoints without resting.
+`session.js` bounds and persists remaining lock time. This prevents local menu/rest
+loopholes; it is not trusted multiplayer persistence or anti-cheat.
+
+Hostile hooks automatically reel opponents toward the caster. Friendly and world
+hooks outside combat store a reel toggle; another tap stops it. Stronger hooks
+still take more presses to escape, but standard capture is about six deliberate
+taps, with slow decay and a minimum 0.11-second accepted press interval.
+
+`summoning-view.js` owns the world-space white orb in front of the seated avatar
+and brief manifestation flashes. `aura-view.js` owns animated white back-face
+extrusion shells on body and complete weapon meshes; it observes aura state.
+Replaced models detach shells before disposing their geometry/materials. These
+visuals do not modify power or infer a behavior from a silhouette.
+
+`controls.js` unifies keyboard, standard Gamepad and touch intent. Pointer IDs keep
+the movement stick and camera drag independent; pointer cancellation and blur
+clear held controls. Touch attacks/struggle are discrete actions. D-pad selects
+slots in the field and navigates meditation controls in the workshop. See README
+and the in-game guide for current mappings. Touch graphics default to no shadows
+and capped device pixel ratio; saved quality settings are bounded on load.
+
+Extension points: add normalized catalog data, geometry, an explicit simulation
+capability, its input/visual adapters and behavior tests. A new animal requires
+locomotion/rigging and its own abilities; adding a preset silhouette is insufficient.

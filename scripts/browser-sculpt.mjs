@@ -24,10 +24,12 @@ export async function test({page,out}) {
   await page.waitForFunction(() => JSON.parse(localStorage.getItem('the-source.creation.v1'))?.form === 'hook');
   await page.reload(); await page.waitForFunction(() => window.__SOURCE_DEBUG__);
   assert.deepEqual((await creation(page)).shape.points, drawn.shape.points, 'The actual stroke autosaves');
+  await page.locator('#assign-slot').click();
   await page.locator('#enter-ground').click();
   await page.evaluate(() => window.__SOURCE_DEBUG__.aimAt('frame-0-anchor-0'));
   await page.keyboard.press('KeyF');
   await page.waitForFunction(() => window.__SOURCE_DEBUG__.snapshot().hook?.bodyId === 'frame-0-anchor-0');
+  assert.deepEqual((await page.evaluate(()=>window.__SOURCE_DEBUG__.snapshot().hook.definition)).shape.points, drawn.shape.points);
   await page.locator('#meditate-toggle').click();
   await page.locator('[data-preset="orb"]').click();
   await trace(page, '#shape-canvas');

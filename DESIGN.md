@@ -133,3 +133,23 @@ The free-form creation editor, full behaviors, multiplayer/network persistence,
 precise progression/economy balance, and many combat values remain to be designed
 and tested. Preserve the user's freedom principle without claiming an unbounded
 simulation is already technically solved.
+
+
+## Prototype 3 decisions (2026-10-09)
+
+Presets lead creation; cosmetic clay tools remain optional. A visible orb of the
+Source floats directly in front of the seated character during meditation.
+Prepare and save creations before battle; meditation/editing is forbidden in
+combat. Four slots support quick keyboard, controller and touch selection.
+Armor may persist while using another weapon, with independent reserve upkeep.
+
+Combat hooks pull the opponent toward the caster automatically. Outside combat,
+reeling is a press-to-toggle action. Escaping is easier but still requires
+repeated deliberate presses. Sword attacks chain through four inputs, with a
+heavy fourth. White spiking aura must visibly cover both body and weapon.
+
+Mobile-friendly controls are a priority before expanding the catalog. Sword,
+armor and tool presets have explicit behaviors; geometry alone does not identify
+an arbitrary object. Fantasy animals can later gain distinct abilities through
+new capabilities. Tool life skills, story/stages and the larger open world remain
+planned. See PROGRESS.md for what is actually built and verified.
