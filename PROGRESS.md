@@ -3,7 +3,15 @@
 Updated 2026-10-10. Read README.md, AGENTS.md, docs/ARCHITECTURE.md and DESIGN.md
 before continuing. Preserve the earlier release evidence below.
 
-## Prototype 3 (0.4.0) — verified, awaiting publication
+## Prototype 3 (0.4.0) — published and verified
+
+Play: https://splcloseone.github.io/guidance/?v=0.4.0
+Source implementation: 5d6d83e on source-prototype (main unchanged).
+GitHub Pages reports built for 64c57a21652c39c04b25d1443af0e5e27e95a8c6.
+A TLS-verified HTTPS fetch of the public URL matches the tested final standalone
+HTML byte for byte. The normal gh-pages push preserved earlier release history.
+No TLS verification was disabled; behavior was checked on the identical packaged
+HTML locally because the cloud browser's public HTTPS trust limitation remains.
 
 The user authorized building on 2026-10-09. Implemented four saved loadout slots,
 independent armor/weapon upkeep, four-input sword combo with heavy finisher,
@@ -34,8 +42,12 @@ The final ZIP passes independent integrity and exact HTML equality checks.
 
 Final HTML SHA-256: daacdbef153db975998aa705eb397fafaea68ef1c13b449a1bfb52742cd2f5e7
 
-Next: commit/push, publish gh-pages, and verify public delivery. All implementation
-and validation work is complete; no 0.4 release is public yet.
+All implementation, validation, source backup and publication work is complete.
+Next: user testing, especially physical phone/controller feel, combo timing,
+visible spiking and preparing different versions of one creation. Keep this a
+local practice build; online PvP, parrying/guard, animal behavior, life-skill
+interactions and world progression remain future work. Do not rerun completed
+checks without a change or concern that warrants it.
 
 ## 0.3 — solid clay, white aura and sword combat
 
